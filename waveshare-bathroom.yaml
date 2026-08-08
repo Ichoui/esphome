@@ -82,7 +82,7 @@ sensor:
     id: indoor_temperature
     entity_id: sensor.thermo_int_temperature
   - platform: homeassistant
-    id: outddoor_temperature
+    id: outdoor_temperature
     entity_id: sensor.thermo_out_temperature
     
   # humidités
@@ -100,16 +100,15 @@ sensor:
 
   # données météo numériques
   - platform: homeassistant
-    id: weather_saint_georges
-    entity_id: weather.saint_georges
-  - platform: homeassistant
     id: sunset_sunrise
     entity_id: sensor.soleil_coucher_lever
 
   
 text_sensor:
-  # condition météo
-  # textes éventuels
+  # Météo - condition actuelle
+  - platform: homeassistant
+    id: weather_condition
+    entity_id: weather.saint_georges
 
 
 # =============================
