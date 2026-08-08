@@ -31,8 +31,21 @@ ota:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-
   ap:
     ssid: "Waveshare-Bathroom-Fallback"
-
 captive_portal:
+
+
+i2c:
+  sda: GPIO8
+  scl: GPIO9
+
+ch422g:
+  - id: ch422g_hub
+
+display:
+  - platform: mipi_rgb
+    model: ESP32-S3-TOUCH-LCD-4.3
+    id: main_display
+    lambda: |-
+      it.fill(Color(255, 0, 0));
