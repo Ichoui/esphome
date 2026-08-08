@@ -81,9 +81,17 @@ sensor:
   - platform: homeassistant
     id: indoor_temperature
     entity_id: sensor.thermo_int_temperature
+    
   - platform: homeassistant
     id: outdoor_temperature
     entity_id: sensor.thermo_out_temperature
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: lbl_outdoor_temperature
+            text:
+              format: "%.1f °C"
+              args: [x]
     
   # humidités
   - platform: homeassistant
@@ -96,10 +104,8 @@ sensor:
   # Humidex
   - platform: homeassistant
     id: humidex_out
-    entity_id: sensor.thermo_out_humidex
-
-  # données météo numériques
-
+    entity_id: sensor.thermo_out_humidex    
+    
   
 text_sensor:
   # Météo - condition actuelle
@@ -122,12 +128,7 @@ lvgl:
     - touchscreen_id: main_touch
 
   widgets:
-    - button:
-        id: test_button
+    - label:
+        id: lbl_outdoor_temperature
         align: CENTER
-        width: 240
-        height: 100
-        text: "TOUCH ME"
-
-        on_click:
-          - logger.log: "LVGL BUTTON CLICKED"
+        text: "--.- °C"
