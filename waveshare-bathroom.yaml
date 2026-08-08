@@ -50,10 +50,11 @@ touchscreen:
 # =============================
 # LOGS 
 # =============================
-
 logger:
   hardware_uart: UART0
   level: DEBUG
+
+  
 # =============================
 # CONNEXION  
 # =============================
@@ -84,32 +85,36 @@ sensor:
     on_value:
       then:
         - lvgl.label.update:
-            id: lbl_indoor_temperature
+            id: indoor_temperature_value
             text:
               format: "%.1f °C"
               args: [x]
-    
+
   - platform: homeassistant
     id: outdoor_temperature
     entity_id: sensor.thermo_ext_temperature
     on_value:
       then:
         - lvgl.label.update:
-            id: lbl_outdoor_temperature
+            id: outdoor_temperature_value
             text:
               format: "%.1f °C"
               args: [x]
-    
+
   # humidités
   - platform: homeassistant
     id: indoor_humidity
     entity_id: sensor.thermo_int_humidite
     on_value:
       then:
+        - lvgl.arc.update:
+            id: indoor_humidity_arc
+            value: !lambda return static_cast<int>(x);
+
         - lvgl.label.update:
-            id: lbl_indoor_humidity
+            id: indoor_humidity_value
             text:
-              format: "%.0f %%"
+              format: "%.0f%%"
               args: [x]
 
   - platform: homeassistant
@@ -117,23 +122,20 @@ sensor:
     entity_id: sensor.thermo_ext_humidite
     on_value:
       then:
+        - lvgl.arc.update:
+            id: outdoor_humidity_arc
+            value: !lambda return static_cast<int>(x);
+
         - lvgl.label.update:
-            id: lbl_outdoor_humidity
+            id: outdoor_humidity_value
             text:
-              format: "%.0f %%"
+              format: "%.0f%%"
               args: [x]
 
   # Humidex
   - platform: homeassistant
     id: humidex_out
     entity_id: sensor.thermo_ext_humidex
-    on_value:
-      then:
-        - lvgl.label.update:
-            id: lbl_humidex_out
-            text:
-              format: "%.0f"
-              args: [x]
     
 json: 
 text_sensor:
@@ -236,62 +238,321 @@ lvgl:
     - touchscreen_id: main_touch
 
   widgets:
-    # Météo - condition actuelle
-    - label:
-        id: lbl_weather_condition
-        align: TOP_MID
-        y: 30
-        text: "--"
+      # Météo - condition actuelle
+  - label:
+      id: lbl_weather_condition
+      align: TOP_MID
+      y: 30
+      text: "--"
+  
+  # températures
+  - label:
+      id: lbl_indoor_temperature
+      align: TOP_LEFT
+      x: 60
+      y: 100
+      text: "--.- °C"
 
-    # températures
-    - label:
-        id: lbl_indoor_temperature
-        align: TOP_LEFT
-        x: 60
-        y: 100
-        text: "--.- °C"
+  - label:
+      id: lbl_outdoor_temperature
+      align: TOP_RIGHT
+      x: -60
+      y: 100
+      text: "--.- °C"
+  
+  # humidités
+  - label:
+      id: lbl_indoor_humidity
+      align: TOP_LEFT
+      x: 60
+      y: 140
+      text: "-- %"
 
-    - label:
-        id: lbl_outdoor_temperature
-        align: TOP_RIGHT
-        x: -60
-        y: 100
-        text: "--.- °C"
+  - label:
+      id: lbl_outdoor_humidity
+      align: TOP_RIGHT
+      x: -60
+      y: 140
+      text: "-- %"
+  
+  # Humidex
+  - label:
+      id: lbl_humidex_out
+      align: TOP_MID
+      y: 200
+      text: "--"
+  
+  # Lever / coucher du soleil
+  - label:
+      id: lbl_sunset_sunrise
+      align: TOP_MID
+      y: 250
+      text: "--"
+  - label:
+      id: lbl_weather_current
+      align: CENTER
+      width: 0%
+      text_font: montserrat_22
+      text_align: LEFT
+      text: "Attente météo..."
+      
+# >>> LVGL Designer - generated from the canvas. >>>
+# This block is regenerated from the canvas — edits here are not preserved.
+  pages:
+    - id: canvas_2
+      bg_color: 0x111827
+      pad_all: 0
+      widgets:
+        - obj:
+            id: outdoor_humidity_card
+            x: 149
+            y: 290
+            width: 183
+            height: 100
+            bg_color: 0x070E1B
+            bg_opa: 95%
+            border_width: 0
+            border_color: 0x000000
+            border_opa: 0%
+            radius: 16
+            shadow_width: 16
+            shadow_color: 0x3B82F6
+            shadow_opa: 35%
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - arc:
+                  id: outdoor_humidity_arc
+                  x: 4
+                  y: 4
+                  width: 175
+                  height: 80
+                  value: 65
+                  min_value: 0
+                  max_value: 100
+                  adjustable: false
+                  start_angle: 135
+                  end_angle: 45
+                  arc_color: 0x3B82F6
+                  arc_width: 10
+                  arc_opa: 20%
+                  arc_rounded: true
+                  indicator:
+                    arc_color: 0x3B82F6
+                    arc_width: 10
+                    arc_opa: 100%
+                    arc_rounded: true
+                  knob:
+                    bg_opa: 0%
+                  bg_opa: 0%
+                  border_width: 0
+              - label:
+                  id: outdoor_humidity_value
+                  x: 4
+                  y: 32
+                  width: 175
+                  height: 24
+                  text: "65%"
+                  text_color: 0xF1F5F9
+                  text_align: CENTER
+                  long_mode: CLIP
+                  text_font: montserrat_20
+              - label:
+                  id: outdoor_humidity_label
+                  x: 4
+                  y: 84
+                  width: 175
+                  height: 12
+                  text: "Humidité ext"
+                  text_color: 0x3B82F6
+                  text_align: CENTER
+                  long_mode: CLIP
+                  text_font: montserrat_10
 
-    # humidités
-    - label:
-        id: lbl_indoor_humidity
-        align: TOP_LEFT
-        x: 60
-        y: 140
-        text: "-- %"
+        - obj:
+            id: indoor_humidity_card
+            x: 469
+            y: 290
+            width: 183
+            height: 100
+            bg_color: 0x070E1B
+            bg_opa: 95%
+            border_width: 0
+            border_color: 0x000000
+            border_opa: 0%
+            radius: 16
+            shadow_width: 16
+            shadow_color: 0x3B82F6
+            shadow_opa: 35%
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - arc:
+                  id: indoor_humidity_arc
+                  x: 4
+                  y: 4
+                  width: 175
+                  height: 80
+                  value: 65
+                  min_value: 0
+                  max_value: 100
+                  adjustable: false
+                  start_angle: 135
+                  end_angle: 45
+                  arc_color: 0x3B82F6
+                  arc_width: 10
+                  arc_opa: 20%
+                  arc_rounded: true
+                  indicator:
+                    arc_color: 0x3B82F6
+                    arc_width: 10
+                    arc_opa: 100%
+                    arc_rounded: true
+                  knob:
+                    bg_opa: 0%
+                  bg_opa: 0%
+                  border_width: 0
+              - label:
+                  id: indoor_humidity_value
+                  x: 4
+                  y: 32
+                  width: 175
+                  height: 24
+                  text: "65%"
+                  text_color: 0xF1F5F9
+                  text_align: CENTER
+                  long_mode: CLIP
+                  text_font: montserrat_20
+              - label:
+                  id: indoor_humidity_label
+                  x: 4
+                  y: 84
+                  width: 175
+                  height: 12
+                  text: "Humidité int"
+                  text_color: 0x3B82F6
+                  text_align: CENTER
+                  long_mode: CLIP
+                  text_font: montserrat_10
 
-    - label:
-        id: lbl_outdoor_humidity
-        align: TOP_RIGHT
-        x: -60
-        y: 140
-        text: "-- %"
+        - obj:
+            id: widget_1786228959901_h3mhe6rxl
+            x: 340
+            y: 5
+            width: 100
+            height: 100
+            bg_color: 0x070E1B
+            bg_opa: 95%
+            border_width: 0
+            border_color: 0x000000
+            border_opa: 0%
+            radius: 11
+            shadow_width: 16
+            shadow_color: 0x8E9FB8
+            shadow_opa: 35%
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: widget_1786228959901_7152mklf4
+                  x: 6
+                  y: 26
+                  width: 88
+                  height: 32
+                  text: "14:32"
+                  text_color: 0xF1F5F9
+                  text_align: CENTER
+                  long_mode: CLIP
+                  text_font: montserrat_28
+              - label:
+                  id: widget_1786228959901_m3kq1fr0d
+                  x: 6
+                  y: 58
+                  width: 88
+                  height: 16
+                  text: "Mon 28 Mar"
+                  text_color: 0x8E9FB8
+                  text_align: CENTER
+                  long_mode: CLIP
+                  text_font: montserrat_12
 
-    # Humidex
-    - label:
-        id: lbl_humidex_out
-        align: TOP_MID
-        y: 200
-        text: "--"
+        - obj:
+            id: outdoor_temperature_card
+            x: 140
+            y: 400
+            width: 200
+            height: 32
+            bg_color: 0x070E1B
+            bg_opa: 95%
+            border_width: 1
+            border_color: 0x162038
+            border_opa: 20%
+            radius: 16
+            shadow_width: 0
+            shadow_color: 0xEF4444
+            shadow_opa: 0%
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: outdoor_temperature_icon
+                  x: 7
+                  y: 9
+                  width: 14
+                  height: 14
+                  text: "\uF0E7"
+                  text_font: montserrat_12
+                  text_align: CENTER
+                  text_color: 0xEF4444
+              - label:
+                  id: outdoor_temperature_value
+                  x: 26
+                  y: 7
+                  width: 168
+                  height: 18
+                  text: "23.5 °C"
+                  text_color: 0xF1F5F9
+                  text_align: LEFT
+                  long_mode: CLIP
+                  text_font: montserrat_14
 
-    # Lever / coucher du soleil
-    - label:
-        id: lbl_sunset_sunrise
-        align: TOP_MID
-        y: 250
-        text: "--"
-        # Météo - current
-         # Météo - current
-    - label:
-        id: lbl_weather_current
-        align: CENTER
-        width: 90%
-        text_font: montserrat_22
-        text_align: LEFT
-        text: "Attente météo..."
+        - obj:
+            id: indoor_temperature_card
+            x: 460
+            y: 400
+            width: 200
+            height: 32
+            bg_color: 0x070E1B
+            bg_opa: 95%
+            border_width: 1
+            border_color: 0x162038
+            border_opa: 20%
+            radius: 16
+            shadow_width: 0
+            shadow_color: 0xEF4444
+            shadow_opa: 0%
+            pad_all: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: indoor_temperature_icon
+                  x: 7
+                  y: 9
+                  width: 14
+                  height: 14
+                  text: "\uF0E7"
+                  text_font: montserrat_12
+                  text_align: CENTER
+                  text_color: 0xEF4444
+              - label:
+                  id: indoor_temperature_value
+                  x: 26
+                  y: 7
+                  width: 168
+                  height: 18
+                  text: "23.5 °C"
+                  text_color: 0xF1F5F9
+                  text_align: LEFT
+                  long_mode: CLIP
+                  text_font: montserrat_14
+# <<< end LVGL Designer block <<<
