@@ -91,7 +91,7 @@ sensor:
     
   - platform: homeassistant
     id: outdoor_temperature
-    entity_id: sensor.thermo_out_temperature
+    entity_id: sensor.thermo_ext_temperature
     on_value:
       then:
         - lvgl.label.update:
@@ -114,7 +114,7 @@ sensor:
 
   - platform: homeassistant
     id: outdoor_humidity
-    entity_id: sensor.thermo_out_humidite
+    entity_id: sensor.thermo_ext_humidite
     on_value:
       then:
         - lvgl.label.update:
