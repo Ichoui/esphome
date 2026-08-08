@@ -27,6 +27,7 @@ api:
 
 ota:
   - platform: esphome
+    password: !secret waveshare_bathroom__ota_password
 
 wifi:
   ssid: !secret wifi_ssid
