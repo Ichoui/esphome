@@ -36,7 +36,6 @@ wifi:
     ssid: "Waveshare-Bathroom-Fallback"
 captive_portal:
 
-
 i2c:
   sda: GPIO8
   scl: GPIO9
@@ -48,8 +47,8 @@ display:
   - platform: mipi_rgb
     model: ESP32-S3-TOUCH-LCD-4.3
     id: main_display
-    lambda: |-
-      it.fill(Color(255, 0, 0));
+    auto_clear_enabled: false
+    update_interval: never
 
 touchscreen:
   - platform: gt911
@@ -61,7 +60,20 @@ touchscreen:
     reset_pin:
       ch422g: ch422g_hub
       number: 1
+lvgl:
+  displays:
+    - main_display
 
-    on_touch:
-      - lambda: |-
-          ESP_LOGI("touch", "x=%d y=%d", touch.x, touch.y);      
+  touchscreens:
+    - touchscreen_id: main_touch
+
+  widgets:
+    - button:
+        id: test_button
+        align: CENTER
+        width: 240
+        height: 100
+        text: "TOUCH ME"
+
+        on_click:
+          - logger.log: "LVGL BUTTON CLICKED"
