@@ -81,6 +81,13 @@ sensor:
   - platform: homeassistant
     id: indoor_temperature
     entity_id: sensor.thermo_int_temperature
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: lbl_indoor_temperature
+            text:
+              format: "%.1f °C"
+              args: [x]
     
   - platform: homeassistant
     id: outdoor_temperature
@@ -97,14 +104,36 @@ sensor:
   - platform: homeassistant
     id: indoor_humidity
     entity_id: sensor.thermo_int_humidity
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: lbl_indoor_humidity
+            text:
+              format: "%.0f %%"
+              args: [x]
+
   - platform: homeassistant
     id: outdoor_humidity
     entity_id: sensor.thermo_out_humidity
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: lbl_outdoor_humidity
+            text:
+              format: "%.0f %%"
+              args: [x]
 
   # Humidex
   - platform: homeassistant
     id: humidex_out
-    entity_id: sensor.thermo_out_humidex    
+    entity_id: sensor.thermo_out_humidex
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: lbl_humidex_out
+            text:
+              format: "%.0f"
+              args: [x]
     
   
 text_sensor:
@@ -112,14 +141,26 @@ text_sensor:
   - platform: homeassistant
     id: weather_condition
     entity_id: weather.saint_georges
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: lbl_weather_condition
+            text: !lambda return x;
+
   - platform: homeassistant
     id: sunset_sunrise
     entity_id: sensor.soleil_coucher_lever
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: lbl_sunset_sunrise
+            text: !lambda return x;
 
 
 # =============================
 # INTERFACE
 # =============================
+# INTERFACE
 lvgl:
   displays:
     - main_display
@@ -128,7 +169,53 @@ lvgl:
     - touchscreen_id: main_touch
 
   widgets:
+    # Météo - condition actuelle
+    - label:
+        id: lbl_weather_condition
+        align: TOP_MID
+        y: 30
+        text: "--"
+
+    # températures
+    - label:
+        id: lbl_indoor_temperature
+        align: TOP_LEFT
+        x: 60
+        y: 100
+        text: "--.- °C"
+
     - label:
         id: lbl_outdoor_temperature
-        align: CENTER
+        align: TOP_RIGHT
+        x: -60
+        y: 100
         text: "--.- °C"
+
+    # humidités
+    - label:
+        id: lbl_indoor_humidity
+        align: TOP_LEFT
+        x: 60
+        y: 140
+        text: "-- %"
+
+    - label:
+        id: lbl_outdoor_humidity
+        align: TOP_RIGHT
+        x: -60
+        y: 140
+        text: "-- %"
+
+    # Humidex
+    - label:
+        id: lbl_humidex_out
+        align: TOP_MID
+        y: 200
+        text: "--"
+
+    # Lever / coucher du soleil
+    - label:
+        id: lbl_sunset_sunrise
+        align: TOP_MID
+        y: 250
+        text: "--"
