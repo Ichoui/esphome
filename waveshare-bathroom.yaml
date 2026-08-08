@@ -17,6 +17,8 @@ psram:
   speed: 80MHz
 
 logger:
+  hardware_uart: UART0
+  level: DEBUG
 
 api:
   encryption:
