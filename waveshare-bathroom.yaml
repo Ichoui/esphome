@@ -50,3 +50,18 @@ display:
     id: main_display
     lambda: |-
       it.fill(Color(255, 0, 0));
+
+touchscreen:
+  - platform: gt911
+    id: main_touch
+    display: main_display
+
+    interrupt_pin: GPIO4
+
+    reset_pin:
+      ch422g: ch422g_hub
+      number: 1
+
+    on_touch:
+      - lambda: |-
+          ESP_LOGI("touch", "x=%d y=%d", touch.x, touch.y);      
