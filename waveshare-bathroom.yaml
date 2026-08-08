@@ -156,44 +156,75 @@ text_sensor:
             id: lbl_sunset_sunrise
             text: !lambda return x;
 
+  # Météo - dataset complet
   - platform: homeassistant
     id: weather_data
     entity_id: sensor.saint_georges_esphome_weather
     attribute: data
+
     on_value:
       then:
-        - lambda: |-
-            ESP_LOGI(
-              "weather",
-              "Weather JSON reçu : %u bytes",
-              x.size()
-            );
+        - logger.log:
+            format: "Weather payload reçu : %u bytes"
+            args: [ 'x.size()' ]
 
-            bool parsed = json::parse_json(x, [](JsonObject root) -> bool {
-              JsonObject current = root["current"];
-              JsonArray hourly = root["forecast"]["hourly"];
-              JsonArray daily = root["forecast"]["daily"];
+        - lvgl.label.update:
+            id: lbl_weather_current
+            text: !lambda |-
+              std::string output;
 
-              ESP_LOGI(
-                "weather",
-                "Current: %.1f °C | %s",
-                current["native_temperature"].as<float>(),
-                current["condition"].as<const char *>()
+              bool parsed = json::parse_json(
+                x,
+                [&output](JsonObject root) -> bool {
+                  if (!root["current"]) {
+                    output = "JSON OK\nMais current absent";
+                    return true;
+                  }
+
+                  JsonObject current = root["current"];
+
+                  const char *condition =
+                    current["condition"] | "unknown";
+
+                  char buffer[512];
+
+                  snprintf(
+                    buffer,
+                    sizeof(buffer),
+                    "%s\n\n"
+                    "Température : %.1f °C\n"
+                    "Ressenti : %.1f °C\n"
+                    "Humidité : %.0f %%\n"
+                    "Précipitations : %.1f mm\n"
+                    "Vent : %.1f km/h\n"
+                    "Rafales : %.1f km/h\n"
+                    "Pression : %.1f hPa\n"
+                    "Visibilité : %.1f km\n"
+                    "UV : %.2f\n"
+                    "Nuages : %.0f %%",
+                    condition,
+                    current["native_temperature"].as<float>(),
+                    current["native_apparent_temperature"].as<float>(),
+                    current["humidity"].as<float>(),
+                    current["native_precipitation"].as<float>(),
+                    current["native_wind_speed"].as<float>(),
+                    current["native_wind_gust_speed"].as<float>(),
+                    current["native_pressure"].as<float>(),
+                    current["native_visibility"].as<float>(),
+                    current["uv_index"].as<float>(),
+                    current["cloud_coverage"].as<float>()
+                  );
+
+                  output = buffer;
+                  return true;
+                }
               );
 
-              ESP_LOGI(
-                "weather",
-                "Forecast: %u hourly | %u daily",
-                hourly.size(),
-                daily.size()
-              );
+              if (!parsed) {
+                return std::string("JSON réellement invalide");
+              }
 
-              return true;
-            });
-
-            if (!parsed) {
-              ESP_LOGE("weather", "Erreur parsing JSON");
-            }
+              return output;
 # =============================
 # INTERFACE
 # =============================
@@ -256,69 +287,11 @@ lvgl:
         y: 250
         text: "--"
         # Météo - current
+         # Météo - current
     - label:
         id: lbl_weather_current
         align: CENTER
         width: 90%
         text_font: montserrat_22
         text_align: LEFT
-        text: !lambda |-
-          std::string output = "Météo indisponible";
-
-          bool parsed = json::parse_json(
-            id(weather_data).state,
-            [&output](JsonObject root) -> bool {
-              JsonObject current = root["current"].as<JsonObject>();
-
-              if (current.isNull()) {
-                return false;
-              }
-
-              JsonObject supplemental_current =
-                root["supplemental"]["current"].as<JsonObject>();
-
-              const char *condition =
-                current["condition"] | "unknown";
-
-              const char *condition_fr =
-                supplemental_current["condition_label_fr"] | condition;
-
-              char buffer[512];
-
-              snprintf(
-                buffer,
-                sizeof(buffer),
-                "%s\n\n"
-                "Température : %.1f °C\n"
-                "Ressenti : %.1f °C\n"
-                "Humidité : %.0f %%\n"
-                "Précipitations : %.1f mm\n"
-                "Vent : %.1f km/h\n"
-                "Rafales : %.1f km/h\n"
-                "Pression : %.1f hPa\n"
-                "Visibilité : %.1f km\n"
-                "UV : %.2f\n"
-                "Nuages : %.0f %%",
-                condition_fr,
-                current["native_temperature"].as<float>(),
-                current["native_apparent_temperature"].as<float>(),
-                current["humidity"].as<float>(),
-                current["native_precipitation"].as<float>(),
-                current["native_wind_speed"].as<float>(),
-                current["native_wind_gust_speed"].as<float>(),
-                current["native_pressure"].as<float>(),
-                current["native_visibility"].as<float>(),
-                current["uv_index"].as<float>(),
-                current["cloud_coverage"].as<float>()
-              );
-
-              output = buffer;
-              return true;
-            }
-          );
-
-          if (!parsed) {
-            return std::string("Erreur parsing météo");
-          }
-
-          return output;
+        text: "Attente météo..."
