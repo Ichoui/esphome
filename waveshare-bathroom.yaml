@@ -2,6 +2,7 @@ substitutions:
   name: waveshare-bathroom
   friendly_name: Waveshare - BathRoom
 
+  
 packages:
   esphome.bluetooth-proxy: "github://esphome/bluetooth-proxies/seeed/seeed-esp32-poe.yaml@main"
 
