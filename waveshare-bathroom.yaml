@@ -92,11 +92,21 @@ sensor:
   - platform: homeassistant
     id: outdoor_humidity
     entity_id: sensor.thermo_out_humidity
+
+  # Humidex
+  - platform: homeassistant
+    id: humidex_out
+    entity_id: sensor.thermo_out_humidex
+
   # données météo numériques
   - platform: homeassistant
     id: weather_saint_georges
     entity_id: weather.saint_georges
+  - platform: homeassistant
+    id: sunset_sunrise
+    entity_id: sensor.soleil_coucher_lever
 
+  
 text_sensor:
   # condition météo
   # textes éventuels
