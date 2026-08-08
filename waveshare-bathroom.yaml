@@ -9,6 +9,7 @@ esphome:
 
 esp32:
   variant: esp32s3
+  flash_size: 16MB
   framework:
     type: esp-idf
 
