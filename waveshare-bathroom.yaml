@@ -78,8 +78,24 @@ wifi:
 
 sensor:
   # températures
+  - platform: homeassistant
+    id: indoor_temperature
+    entity_id: sensor.thermo_int_temperature
+  - platform: homeassistant
+    id: outddoor_temperature
+    entity_id: sensor.thermo_out_temperature
+    
   # humidités
+  - platform: homeassistant
+    id: indoor_humidity
+    entity_id: sensor.thermo_int_humidity
+  - platform: homeassistant
+    id: outdoor_humidity
+    entity_id: sensor.thermo_out_humidity
   # données météo numériques
+  - platform: homeassistant
+    id: weather_saint_georges
+    entity_id: weather.saint_georges
 
 text_sensor:
   # condition météo
