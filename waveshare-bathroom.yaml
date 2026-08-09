@@ -10,6 +10,7 @@ esphome:
   name_add_mac_suffix: false
   friendly_name: ${friendly_name}
 
+  
 # =============================
 # HARDWARE
 # =============================
@@ -196,7 +197,7 @@ text_sensor:
                     "%s\n\n"
                     "Température : %.1f °C\n"
                     "Ressenti : %.1f °C\n"
-                    "Humidité : %.0f %%\n"
+                    "Humidite : %.0f %%\n"
                     "Précipitations : %.1f mm\n"
                     "Vent : %.1f km/h\n"
                     "Rafales : %.1f km/h\n"
@@ -292,7 +293,6 @@ lvgl:
       id: lbl_weather_current
       align: CENTER
       width: 0%
-      text_font: montserrat_22
       text_align: LEFT
       text: "Attente météo..."
 # >>> LVGL Designer - generated from the canvas. >>>
@@ -322,16 +322,17 @@ lvgl:
             widgets:
               - arc:
                   id: outdoor_humidity_arc
-                  x: 4
+                  x: 52
                   y: 4
-                  width: 175
+                  width: 80
                   height: 80
                   value: 65
                   min_value: 0
                   max_value: 100
                   adjustable: false
-                  start_angle: 135
-                  end_angle: 45
+                  start_angle: 0
+                  end_angle: 270
+                  rotation: 135
                   arc_color: 0x3B82F6
                   arc_width: 10
                   arc_opa: 20%
@@ -355,18 +356,16 @@ lvgl:
                   text_color: 0xF1F5F9
                   text_align: CENTER
                   long_mode: CLIP
-                  text_font: montserrat_20
               - label:
                   id: outdoor_humidity_label
                   x: 4
                   y: 84
                   width: 175
                   height: 12
-                  text: "Humidité ext"
+                  text: "Humidite ext"
                   text_color: 0x3B82F6
                   text_align: CENTER
                   long_mode: CLIP
-                  text_font: montserrat_10
 
         - obj:
             id: indoor_humidity_card
@@ -388,16 +387,17 @@ lvgl:
             widgets:
               - arc:
                   id: indoor_humidity_arc
-                  x: 4
+                  x: 52
                   y: 4
-                  width: 175
+                  width: 80
                   height: 80
                   value: 65
                   min_value: 0
                   max_value: 100
                   adjustable: false
-                  start_angle: 135
-                  end_angle: 45
+                  start_angle: 0
+                  end_angle: 270
+                  rotation: 135
                   arc_color: 0x3B82F6
                   arc_width: 10
                   arc_opa: 20%
@@ -421,18 +421,16 @@ lvgl:
                   text_color: 0xF1F5F9
                   text_align: CENTER
                   long_mode: CLIP
-                  text_font: montserrat_20
               - label:
                   id: indoor_humidity_label
                   x: 4
                   y: 84
                   width: 175
                   height: 12
-                  text: "Humidité int"
+                  text: "Humidite int"
                   text_color: 0x3B82F6
                   text_align: CENTER
                   long_mode: CLIP
-                  text_font: montserrat_10
 
         - obj:
             id: widget_1786228959901_h3mhe6rxl
@@ -462,7 +460,6 @@ lvgl:
                   text_color: 0xF1F5F9
                   text_align: CENTER
                   long_mode: CLIP
-                  text_font: montserrat_28
               - label:
                   id: widget_1786228959901_m3kq1fr0d
                   x: 6
@@ -473,7 +470,6 @@ lvgl:
                   text_color: 0x8E9FB8
                   text_align: CENTER
                   long_mode: CLIP
-                  text_font: montserrat_12
 
         - obj:
             id: outdoor_temperature_card
@@ -500,7 +496,6 @@ lvgl:
                   width: 14
                   height: 14
                   text: "\uF0E7"
-                  text_font: montserrat_12
                   text_align: CENTER
                   text_color: 0xEF4444
               - label:
@@ -513,7 +508,6 @@ lvgl:
                   text_color: 0xF1F5F9
                   text_align: LEFT
                   long_mode: CLIP
-                  text_font: montserrat_14
 
         - obj:
             id: indoor_temperature_card
@@ -540,7 +534,6 @@ lvgl:
                   width: 14
                   height: 14
                   text: "\uF0E7"
-                  text_font: montserrat_12
                   text_align: CENTER
                   text_color: 0xEF4444
               - label:
@@ -553,5 +546,4 @@ lvgl:
                   text_color: 0xF1F5F9
                   text_align: LEFT
                   long_mode: CLIP
-                  text_font: montserrat_14
 # <<< end LVGL Designer block <<<
