@@ -300,72 +300,7 @@ text_sensor:
 # =============================
 # INTERFACE
 # =============================
-lvgl:
-  displays:
-    - main_display
 
-  touchscreens:
-    - touchscreen_id: main_touch
-
-  widgets:
-      # Météo - condition actuelle
-  - label:
-      id: lbl_weather_condition
-      align: TOP_MID
-      y: 30
-      text: "--"
-  
-  # températures
-  - label:
-      id: lbl_indoor_temperature
-      align: TOP_LEFT
-      x: 60
-      y: 100
-      text: "--.- °C"
-
-  - label:
-      id: lbl_outdoor_temperature
-      align: TOP_RIGHT
-      x: -60
-      y: 100
-      text: "--.- °C"
-  
-  # humidités
-  - label:
-      id: lbl_indoor_humidity
-      align: TOP_LEFT
-      x: 60
-      y: 140
-      text: "-- %"
-
-  - label:
-      id: lbl_outdoor_humidity
-      align: TOP_RIGHT
-      x: -60
-      y: 140
-      text: "-- %"
-  
-  # Humidex
-  - label:
-      id: lbl_humidex_out
-      align: TOP_MID
-      y: 200
-      text: "--"
-  
-  # Lever / coucher du soleil
-  - label:
-      id: lbl_sunset_sunrise
-      align: TOP_MID
-      y: 250
-      text: "--"
-  - label:
-      id: lbl_weather_current
-      align: CENTER
-      width: 0%
-      text_align: LEFT
-      text: "Attente météo..."
-# >>> LVGL Designer - generated from the canvas. >>>
-  # This block is regenerated from the canvas — edits here are not preserved.
 # >>> LVGL Designer - generated from the canvas. >>>
 # This block is regenerated from the canvas — edits here are not preserved.
 font:
@@ -374,28 +309,51 @@ font:
       type: web
     id: mdi_icons_24
     size: 24
-    glyphs: [
-      "\U000F18D6",  # Sun Thermometer
-      "\U000F0595",  # Partly Cloudy
-      "\U000F0826",  # Home Account
-    ]
-pages:
+    glyphs:
+      - "\U000F18D6"  # Sun Thermometer
+      - "\U000F0595"  # Partly Cloudy
+      - "\U000F0826"  # Home Account
+      - "\U000F050F"  # Thermometer
+      - "\U000F058E"  # Water Percent
+      - "\U000F059D"  # Weather Windy
+      - "\U000F0599"  # Weather Sunny
+      - "\U000F0590"  # Weather Cloudy
+      - "\U000F0597"  # Weather Rainy
+      - "\U000F059C"  # Weather Sunset Up
+      - "\U000F059B"  # Weather Sunset Down
+  - file:
+      url: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
+      type: web
+    id: mdi_icons_48
+    size: 48
+    glyphs:
+      - "\U000F18D6"  # Sun Thermometer
+      - "\U000F0595"  # Partly Cloudy
+      - "\U000F0599"  # Weather Sunny
+      - "\U000F0590"  # Weather Cloudy
+      - "\U000F0597"  # Weather Rainy
+
+lvgl:
+  displays:
+    - main_display
+
+  touchscreens:
+    - touchscreen_id: main_touch
+
+  pages:
     - id: canvas_2
-      bg_color: 0x111827
+      bg_color: 0x0B1020
       pad_all: 0
       widgets:
         - obj:
             id: tab_sidebar
             x: 0
             y: 0
-            width: 90
+            width: 96
             height: 480
-            hidden: true
-            bg_color: 0x070E1B
-            bg_opa: 95%
+            bg_color: 0x070B14
+            bg_opa: 100%
             border_width: 0
-            border_color: 0x000000
-            border_opa: 0%
             radius: 0
             shadow_width: 0
             pad_all: 0
@@ -411,109 +369,127 @@ pages:
                     - 0, 0
                     - 0, 480
                   line_width: 1
-                  line_color: 0x162038
-              - obj:
+                  line_color: 0x1F2A44
+              - button:
                   id: tab_meteo_button
-                  x: 5
-                  y: 96
+                  x: 8
+                  y: 36
                   width: 80
-                  height: 72
-                  bg_color: 0x111827
+                  height: 96
+                  bg_color: 0x13233F
+                  bg_opa: 100%
                   border_width: 1
-                  border_color: 0x3B82F6
-                  border_opa: 70%
+                  border_color: 0x60A5FA
+                  border_opa: 80%
                   radius: 8
+                  shadow_width: 0
                   pad_all: 0
                   scrollbar_mode: "OFF"
+                  on_click:
+                    - lvgl.widget.show: meteo_content
+                    - lvgl.widget.hide: [previsions_content, maison_content]
                   widgets:
                     - label:
-                        id: tab_meteo_label
-                        x: 3
-                        y: 40
-                        width: 72
-                        height: 18
-                        text: "Meteo"
-                        text_color: 0x3B82F6
-                        text_align: CENTER
-                        long_mode: CLIP
-                    - label:
-                        id: lv_icon_10
-                        x: 15
-                        y: 0
+                        id: tab_meteo_icon
+                        x: 16
+                        y: 12
                         width: 48
-                        height: 48
+                        height: 34
                         text: "\U000F18D6"
                         text_font: mdi_icons_24
                         text_align: CENTER
                         text_color: 0xFFFFFF
-              - obj:
+                    - label:
+                        id: tab_meteo_label
+                        x: 4
+                        y: 58
+                        width: 72
+                        height: 20
+                        text: "Météo"
+                        text_font: montserrat_12
+                        text_color: 0x93C5FD
+                        text_align: CENTER
+                        long_mode: CLIP
+              - button:
                   id: tab_previsions_button
-                  x: 5
-                  y: 190
+                  x: 8
+                  y: 192
                   width: 80
-                  height: 72
-                  bg_color: 0x070E1B
+                  height: 96
+                  bg_color: 0x0B1220
+                  bg_opa: 100%
                   border_width: 1
-                  border_color: 0x162038
-                  border_opa: 35%
+                  border_color: 0x263449
+                  border_opa: 70%
                   radius: 8
+                  shadow_width: 0
                   pad_all: 0
                   scrollbar_mode: "OFF"
+                  on_click:
+                    - lvgl.widget.show: previsions_content
+                    - lvgl.widget.hide: [meteo_content, maison_content]
                   widgets:
+                    - label:
+                        id: tab_previsions_icon
+                        x: 16
+                        y: 12
+                        width: 48
+                        height: 34
+                        text: "\U000F0595"
+                        text_font: mdi_icons_24
+                        text_align: CENTER
+                        text_color: 0xCBD5E1
                     - label:
                         id: tab_previsions_label
-                        x: 3
-                        y: 40
+                        x: 4
+                        y: 58
                         width: 72
-                        height: 18
-                        text: "Previsions"
-                        text_color: 0x8E9FB8
+                        height: 20
+                        text: "Prévisions"
+                        text_font: montserrat_12
+                        text_color: 0x94A3B8
                         text_align: CENTER
                         long_mode: CLIP
-              - obj:
+              - button:
                   id: tab_maison_button
-                  x: 5
-                  y: 275
+                  x: 8
+                  y: 348
                   width: 80
-                  height: 72
-                  bg_color: 0x070E1B
+                  height: 96
+                  bg_color: 0x0B1220
+                  bg_opa: 100%
                   border_width: 1
-                  border_color: 0x162038
-                  border_opa: 35%
+                  border_color: 0x263449
+                  border_opa: 70%
                   radius: 8
+                  shadow_width: 0
                   pad_all: 0
                   scrollbar_mode: "OFF"
+                  on_click:
+                    - lvgl.widget.show: maison_content
+                    - lvgl.widget.hide: [meteo_content, previsions_content]
                   widgets:
                     - label:
+                        id: tab_maison_icon
+                        x: 16
+                        y: 12
+                        width: 48
+                        height: 34
+                        text: "\U000F0826"
+                        text_font: mdi_icons_24
+                        text_align: CENTER
+                        text_color: 0xCBD5E1
+                    - label:
                         id: tab_maison_label
-                        x: 3
-                        y: 40
+                        x: 4
+                        y: 58
                         width: 72
-                        height: 18
+                        height: 20
                         text: "Maison"
-                        text_color: 0x8E9FB8
+                        text_font: montserrat_12
+                        text_color: 0x94A3B8
                         text_align: CENTER
                         long_mode: CLIP
-              - label:
-                  id: widget_1786288438485_c5t5hqovt
-                  x: 24
-                  y: 180
-                  width: 48
-                  height: 48
-                  text: "\U000F0595"
-                  text_font: mdi_icons_24
-                  text_align: CENTER
-                  text_color: 0xFFFFFF
-              - label:
-                  id: widget_1786288447052_6an5czphu
-                  x: 24
-                  y: 275
-                  width: 48
-                  height: 48
-                  text: "\U000F0826"
-                  text_font: mdi_icons_24
-                  text_align: CENTER
-                  text_color: 0xFFFFFF
 
         - obj:
             id: previsions_content
@@ -529,13 +505,12 @@ pages:
             widgets:
               - label:
                   id: previsions_placeholder
-                  x: 0
-                  y: 0
-                  width: 240
-                  height: 32
                   align: CENTER
-                  text: "Previsions"
-                  text_color: 0xF1F5F9
+                  width: 260
+                  height: 32
+                  text: "Prévisions"
+                  text_font: montserrat_24
+                  text_color: 0xF8FAFC
                   text_align: CENTER
                   long_mode: CLIP
 
@@ -553,13 +528,12 @@ pages:
             widgets:
               - label:
                   id: maison_placeholder
-                  x: 0
-                  y: 0
-                  width: 240
-                  height: 32
                   align: CENTER
+                  width: 260
+                  height: 32
                   text: "Maison"
-                  text_color: 0xF1F5F9
+                  text_font: montserrat_24
+                  text_color: 0xF8FAFC
                   text_align: CENTER
                   long_mode: CLIP
 
@@ -575,289 +549,555 @@ pages:
             scrollbar_mode: "OFF"
             widgets:
               - obj:
-                  id: widget_1786228959901_h3mhe6rxl
-                  x: 25
-                  y: 5
-                  width: 100
-                  height: 100
-                  bg_color: 0x070E1B
-                  bg_opa: 95%
-                  border_width: 0
-                  border_color: 0x000000
-                  border_opa: 0%
-                  radius: 11
-                  shadow_width: 16
-                  shadow_color: 0x8E9FB8
-                  shadow_opa: 35%
+                  id: weather_hero_card
+                  x: 16
+                  y: 14
+                  width: 328
+                  height: 194
+                  bg_color: 0x13233F
+                  bg_opa: 100%
+                  border_width: 1
+                  border_color: 0x2E5C94
+                  border_opa: 55%
+                  radius: 8
+                  shadow_width: 6
+                  shadow_color: 0x38BDF8
+                  shadow_opa: 18%
                   pad_all: 0
                   scrollbar_mode: "OFF"
                   widgets:
                     - label:
-                        id: widget_1786228959901_7152mklf4
-                        x: 6
-                        y: 26
-                        width: 88
+                        id: weather_city_label
+                        x: 22
+                        y: 15
+                        width: 210
+                        height: 26
+                        text: "Saint-Georges"
+                        text_font: montserrat_20
+                        text_color: 0xF8FAFC
+                        long_mode: CLIP
+                    - label:
+                        id: weather_condition_label
+                        x: 22
+                        y: 45
+                        width: 218
+                        height: 24
+                        text: "--"
+                        text_font: montserrat_16
+                        text_color: 0xBFDBFE
+                        long_mode: CLIP
+                    - label:
+                        id: weather_condition_icon
+                        x: 236
+                        y: 22
+                        width: 72
+                        height: 60
+                        text: "\U000F0595"
+                        text_font: mdi_icons_48
+                        text_color: 0xFACC15
+                        text_align: CENTER
+                    - label:
+                        id: weather_current_temperature_value
+                        x: 20
+                        y: 82
+                        width: 180
+                        height: 58
+                        text: "--.- °C"
+                        text_font: montserrat_48
+                        text_color: 0xFFFFFF
+                        long_mode: CLIP
+                    - label:
+                        id: weather_apparent_temperature_value
+                        x: 24
+                        y: 149
+                        width: 230
+                        height: 24
+                        text: "Ressenti --.- °C"
+                        text_font: montserrat_18
+                        text_color: 0xCBD5E1
+                        long_mode: CLIP
+
+              - obj:
+                  id: indoor_temperature_card
+                  x: 360
+                  y: 14
+                  width: 154
+                  height: 88
+                  bg_color: 0x111827
+                  bg_opa: 96%
+                  border_width: 1
+                  border_color: 0x334155
+                  border_opa: 45%
+                  radius: 8
+                  shadow_width: 0
+                  pad_all: 0
+                  scrollbar_mode: "OFF"
+                  widgets:
+                    - label:
+                        id: indoor_temperature_icon
+                        x: 12
+                        y: 17
+                        width: 30
+                        height: 30
+                        text: "\U000F050F"
+                        text_font: mdi_icons_24
+                        text_color: 0xF97316
+                        text_align: CENTER
+                    - label:
+                        id: indoor_temperature_label
+                        x: 50
+                        y: 13
+                        width: 92
+                        height: 18
+                        text: "Intérieur"
+                        text_font: montserrat_14
+                        text_color: 0x94A3B8
+                        long_mode: CLIP
+                    - label:
+                        id: indoor_temperature_value
+                        x: 50
+                        y: 37
+                        width: 92
                         height: 32
-                        text: "14:32"
-                        text_color: 0xF1F5F9
-                        text_align: CENTER
+                        text: "--.- °C"
+                        text_font: montserrat_24
+                        text_color: 0xF8FAFC
                         long_mode: CLIP
-                    - label:
-                        id: widget_1786228959901_m3kq1fr0d
-                        x: 6
-                        y: 58
-                        width: 88
-                        height: 16
-                        text: "Mon 28 Mar"
-                        text_color: 0x8E9FB8
-                        text_align: CENTER
-                        long_mode: CLIP
+
               - obj:
-                  id: widget_1786289630420_7l2ila9fm
-                  x: 277
-                  y: 20
-                  width: 150
-                  height: 150
-                  bg_color: 0x070E1B
-                  bg_opa: 95%
+                  id: outdoor_temperature_card
+                  x: 528
+                  y: 14
+                  width: 154
+                  height: 88
+                  bg_color: 0x111827
+                  bg_opa: 96%
                   border_width: 1
-                  border_color: 0x162038
-                  border_opa: 20%
-                  radius: 16
-                  shadow_width: 16
-                  shadow_color: 0xF59E0B
-                  shadow_opa: 35%
-                  scrollbar_mode: "OFF"
-                  pad_all: 0
-                  widgets:
-                    - label:
-                        id: widget_1786289630420_le0bapcy4
-                        x: 18
-                        y: 18
-                        width: 114
-                        height: 40
-                        text: "\uF0E7"
-                        text_font: montserrat_36
-                        text_align: CENTER
-                        text_color: 0xF59E0B
-                    - label:
-                        id: widget_1786289630420_2nadoxa27
-                        x: 18
-                        y: 61
-                        width: 114
-                        height: 40
-                        text: "23.5"
-                        text_color: 0xF1F5F9
-                        text_align: CENTER
-                        long_mode: CLIP
-                        text_font: montserrat_36
-                    - label:
-                        id: widget_1786289630420_qmb8t8h5b
-                        x: 18
-                        y: 107
-                        width: 114
-                        height: 18
-                        text: "INTERIEUR\n"
-                        text_color: 0x8E9FB8
-                        text_align: CENTER
-                        long_mode: CLIP
-                        text_font: montserrat_14
-                    - line:
-                        id: widget_1786289630420_n1s7z4cyh
-                        x: 18
-                        y: 129
-                        width: 114
-                        height: 3
-                        points:
-                          - 0, 0
-                          - 114, 0
-                        line_width: 3
-                        line_color: 0xF59E0B
-                        line_rounded: true
-              - obj:
-                  id: widget_1786289634984_1vq4dsdxr
-                  x: 470
-                  y: 20
-                  width: 150
-                  height: 150
-                  bg_color: 0x070E1B
-                  bg_opa: 95%
-                  border_width: 1
-                  border_color: 0x162038
-                  border_opa: 20%
-                  radius: 16
-                  shadow_width: 16
-                  shadow_color: 0xF59E0B
-                  shadow_opa: 35%
-                  scrollbar_mode: "OFF"
-                  pad_all: 0
-                  widgets:
-                    - label:
-                        id: widget_1786289634984_22gmsldya
-                        x: 18
-                        y: 18
-                        width: 114
-                        height: 40
-                        text: "\uF0E7"
-                        text_font: montserrat_36
-                        text_align: CENTER
-                        text_color: 0xF59E0B
-                    - label:
-                        id: widget_1786289634984_y1v46pr0m
-                        x: 18
-                        y: 61
-                        width: 114
-                        height: 40
-                        text: "23.5"
-                        text_color: 0xF1F5F9
-                        text_align: CENTER
-                        long_mode: CLIP
-                        text_font: montserrat_36
-                    - label:
-                        id: widget_1786289634984_5d93hnp9z
-                        x: 18
-                        y: 107
-                        width: 114
-                        height: 18
-                        text: "EXTERIEUR\n"
-                        text_color: 0x8E9FB8
-                        text_align: CENTER
-                        long_mode: CLIP
-                        text_font: montserrat_14
-                    - line:
-                        id: widget_1786289634984_qi7eq4yzc
-                        x: 18
-                        y: 129
-                        width: 114
-                        height: 3
-                        points:
-                          - 0, 0
-                          - 114, 0
-                        line_width: 3
-                        line_color: 0xF59E0B
-                        line_rounded: true
-              - obj:
-                  id: widget_1786289814010_vn2y5mj7u
-                  x: 470
-                  y: 185
-                  width: 150
-                  height: 150
-                  bg_color: 0x070E1B
-                  bg_opa: 95%
-                  border_width: 1
-                  border_color: 0x162038
-                  border_opa: 20%
-                  radius: 16
+                  border_color: 0x334155
+                  border_opa: 45%
+                  radius: 8
                   shadow_width: 0
-                  shadow_color: 0x06B6D4
-                  shadow_opa: 0%
-                  scrollbar_mode: "OFF"
                   pad_all: 0
+                  scrollbar_mode: "OFF"
                   widgets:
                     - label:
-                        id: widget_1786289814010_ynxxztqp5
-                        x: 18
-                        y: 18
-                        width: 114
-                        height: 40
-                        text: "\uF043"
-                        text_font: montserrat_36
+                        id: outdoor_temperature_icon
+                        x: 12
+                        y: 17
+                        width: 30
+                        height: 30
+                        text: "\U000F18D6"
+                        text_font: mdi_icons_24
+                        text_color: 0xF59E0B
                         text_align: CENTER
-                        text_color: 0x06B6D4
                     - label:
-                        id: widget_1786289814010_6v2a0dkar
-                        x: 18
-                        y: 61
-                        width: 114
-                        height: 40
-                        text: "58 %"
-                        text_color: 0xF1F5F9
-                        text_align: CENTER
-                        long_mode: CLIP
-                        text_font: montserrat_36
-                    - label:
-                        id: widget_1786289814010_fm6ghjg1u
-                        x: 18
-                        y: 107
-                        width: 114
+                        id: outdoor_temperature_label
+                        x: 50
+                        y: 13
+                        width: 92
                         height: 18
-                        text: "HUMIDITE"
-                        text_color: 0x8E9FB8
-                        text_align: CENTER
-                        long_mode: CLIP
+                        text: "Extérieur"
                         text_font: montserrat_14
-                    - line:
-                        id: widget_1786289814010_myif2u7kq
-                        x: 18
-                        y: 129
-                        width: 114
-                        height: 3
-                        points:
-                          - 0, 0
-                          - 114, 0
-                        line_width: 3
-                        line_color: 0x06B6D4
-                        line_rounded: true
+                        text_color: 0x94A3B8
+                        long_mode: CLIP
+                    - label:
+                        id: outdoor_temperature_value
+                        x: 50
+                        y: 37
+                        width: 92
+                        height: 32
+                        text: "--.- °C"
+                        text_font: montserrat_24
+                        text_color: 0xF8FAFC
+                        long_mode: CLIP
+
               - obj:
-                  id: widget_1786290039758_19re7k94l
-                  x: 277
-                  y: 220
-                  width: 150
-                  height: 150
-                  bg_color: 0x070E1B
-                  bg_opa: 95%
+                  id: indoor_humidity_card
+                  x: 360
+                  y: 118
+                  width: 154
+                  height: 88
+                  bg_color: 0x111827
+                  bg_opa: 96%
                   border_width: 1
-                  border_color: 0x162038
-                  border_opa: 20%
-                  radius: 16
+                  border_color: 0x334155
+                  border_opa: 45%
+                  radius: 8
                   shadow_width: 0
-                  shadow_color: 0x06B6D4
-                  shadow_opa: 0%
-                  scrollbar_mode: "OFF"
                   pad_all: 0
+                  scrollbar_mode: "OFF"
                   widgets:
                     - label:
-                        id: widget_1786290039758_qh1of6vp3
-                        x: 18
-                        y: 18
-                        width: 114
-                        height: 40
-                        text: "\uF043"
-                        text_font: montserrat_36
-                        text_align: CENTER
-                        text_color: 0x06B6D4
-                    - label:
-                        id: widget_1786290039758_sdi8h68n4
-                        x: 18
-                        y: 61
-                        width: 114
-                        height: 40
-                        text: "33"
-                        text_color: 0xF1F5F9
-                        text_align: CENTER
-                        long_mode: CLIP
-                        text_font: montserrat_36
-                    - label:
-                        id: widget_1786290039758_ysf8ewuha
-                        x: 18
-                        y: 107
-                        width: 114
+                        id: indoor_humidity_label
+                        x: 14
+                        y: 13
+                        width: 86
                         height: 18
-                        text: "HUMIDEX"
-                        text_color: 0x8E9FB8
-                        text_align: CENTER
-                        long_mode: CLIP
+                        text: "Hum. int."
                         text_font: montserrat_14
-                    - line:
-                        id: widget_1786290039758_qmm6wnnzb
-                        x: 18
-                        y: 129
-                        width: 114
-                        height: 3
-                        points:
-                          - 0, 0
-                          - 114, 0
-                        line_width: 3
-                        line_color: 0x06B6D4
-                        line_rounded: true
-# <<< end LVGL Designer block <<<# <<< end LVGL Designer block <<<
+                        text_color: 0x94A3B8
+                        long_mode: CLIP
+                    - label:
+                        id: indoor_humidity_value
+                        x: 14
+                        y: 37
+                        width: 72
+                        height: 32
+                        text: "--%"
+                        text_font: montserrat_24
+                        text_color: 0xF8FAFC
+                        long_mode: CLIP
+                    - arc:
+                        id: indoor_humidity_arc
+                        x: 99
+                        y: 24
+                        width: 42
+                        height: 42
+                        min_value: 0
+                        max_value: 100
+                        value: 0
+                        adjustable: false
+                        arc_width: 5
+                        arc_color: 0x253449
+                        indicator:
+                          arc_width: 5
+                          arc_color: 0x38BDF8
+                        knob:
+                          bg_opa: 0%
+
+              - obj:
+                  id: outdoor_humidity_card
+                  x: 528
+                  y: 118
+                  width: 154
+                  height: 88
+                  bg_color: 0x111827
+                  bg_opa: 96%
+                  border_width: 1
+                  border_color: 0x334155
+                  border_opa: 45%
+                  radius: 8
+                  shadow_width: 0
+                  pad_all: 0
+                  scrollbar_mode: "OFF"
+                  widgets:
+                    - label:
+                        id: outdoor_humidity_label
+                        x: 14
+                        y: 13
+                        width: 86
+                        height: 18
+                        text: "Hum. ext."
+                        text_font: montserrat_14
+                        text_color: 0x94A3B8
+                        long_mode: CLIP
+                    - label:
+                        id: outdoor_humidity_value
+                        x: 14
+                        y: 37
+                        width: 72
+                        height: 32
+                        text: "--%"
+                        text_font: montserrat_24
+                        text_color: 0xF8FAFC
+                        long_mode: CLIP
+                    - arc:
+                        id: outdoor_humidity_arc
+                        x: 99
+                        y: 24
+                        width: 42
+                        height: 42
+                        min_value: 0
+                        max_value: 100
+                        value: 0
+                        adjustable: false
+                        arc_width: 5
+                        arc_color: 0x253449
+                        indicator:
+                          arc_width: 5
+                          arc_color: 0x38BDF8
+                        knob:
+                          bg_opa: 0%
+
+              - obj:
+                  id: weather_wind_card
+                  x: 16
+                  y: 222
+                  width: 212
+                  height: 96
+                  bg_color: 0x111827
+                  bg_opa: 96%
+                  border_width: 1
+                  border_color: 0x334155
+                  border_opa: 45%
+                  radius: 8
+                  shadow_width: 0
+                  pad_all: 0
+                  scrollbar_mode: "OFF"
+                  widgets:
+                    - label:
+                        id: weather_wind_icon
+                        x: 14
+                        y: 15
+                        width: 30
+                        height: 30
+                        text: "\U000F059D"
+                        text_font: mdi_icons_24
+                        text_color: 0x2DD4BF
+                        text_align: CENTER
+                    - label:
+                        id: weather_wind_label
+                        x: 52
+                        y: 16
+                        width: 142
+                        height: 18
+                        text: "Vent / rafales"
+                        text_font: montserrat_14
+                        text_color: 0x94A3B8
+                        long_mode: CLIP
+                    - label:
+                        id: weather_wind_value
+                        x: 52
+                        y: 44
+                        width: 146
+                        height: 30
+                        text: "-- / -- km/h"
+                        text_font: montserrat_22
+                        text_color: 0xF8FAFC
+                        long_mode: CLIP
+
+              - obj:
+                  id: weather_uv_card
+                  x: 244
+                  y: 222
+                  width: 212
+                  height: 96
+                  bg_color: 0x111827
+                  bg_opa: 96%
+                  border_width: 1
+                  border_color: 0x334155
+                  border_opa: 45%
+                  radius: 8
+                  shadow_width: 0
+                  pad_all: 0
+                  scrollbar_mode: "OFF"
+                  widgets:
+                    - label:
+                        id: weather_uv_icon
+                        x: 14
+                        y: 15
+                        width: 30
+                        height: 30
+                        text: "\U000F0599"
+                        text_font: mdi_icons_24
+                        text_color: 0xFACC15
+                        text_align: CENTER
+                    - label:
+                        id: weather_uv_label
+                        x: 52
+                        y: 16
+                        width: 142
+                        height: 18
+                        text: "Index UV"
+                        text_font: montserrat_14
+                        text_color: 0x94A3B8
+                        long_mode: CLIP
+                    - label:
+                        id: weather_uv_value
+                        x: 52
+                        y: 42
+                        width: 136
+                        height: 34
+                        text: "--"
+                        text_font: montserrat_26
+                        text_color: 0xF8FAFC
+                        long_mode: CLIP
+
+              - obj:
+                  id: weather_cloud_rain_card
+                  x: 472
+                  y: 222
+                  width: 212
+                  height: 96
+                  bg_color: 0x111827
+                  bg_opa: 96%
+                  border_width: 1
+                  border_color: 0x334155
+                  border_opa: 45%
+                  radius: 8
+                  shadow_width: 0
+                  pad_all: 0
+                  scrollbar_mode: "OFF"
+                  widgets:
+                    - label:
+                        id: weather_cloud_rain_icon
+                        x: 14
+                        y: 15
+                        width: 30
+                        height: 30
+                        text: "\U000F0597"
+                        text_font: mdi_icons_24
+                        text_color: 0x60A5FA
+                        text_align: CENTER
+                    - label:
+                        id: weather_cloud_rain_label
+                        x: 52
+                        y: 16
+                        width: 142
+                        height: 18
+                        text: "Nuages / pluie"
+                        text_font: montserrat_14
+                        text_color: 0x94A3B8
+                        long_mode: CLIP
+                    - label:
+                        id: weather_cloud_rain_value
+                        x: 52
+                        y: 44
+                        width: 146
+                        height: 30
+                        text: "--% / -- mm"
+                        text_font: montserrat_22
+                        text_color: 0xF8FAFC
+                        long_mode: CLIP
+
+              - obj:
+                  id: humidex_out_card
+                  x: 16
+                  y: 340
+                  width: 212
+                  height: 96
+                  bg_color: 0x111827
+                  bg_opa: 96%
+                  border_width: 1
+                  border_color: 0x334155
+                  border_opa: 45%
+                  radius: 8
+                  shadow_width: 0
+                  pad_all: 0
+                  scrollbar_mode: "OFF"
+                  widgets:
+                    - label:
+                        id: humidex_out_icon
+                        x: 14
+                        y: 15
+                        width: 30
+                        height: 30
+                        text: "\U000F18D6"
+                        text_font: mdi_icons_24
+                        text_color: 0xFB7185
+                        text_align: CENTER
+                    - label:
+                        id: humidex_out_label
+                        x: 52
+                        y: 16
+                        width: 142
+                        height: 18
+                        text: "Humidex ext."
+                        text_font: montserrat_14
+                        text_color: 0x94A3B8
+                        long_mode: CLIP
+                    - label:
+                        id: humidex_out_value
+                        x: 52
+                        y: 42
+                        width: 136
+                        height: 34
+                        text: "--"
+                        text_font: montserrat_26
+                        text_color: 0xF8FAFC
+                        long_mode: CLIP
+
+              - obj:
+                  id: weather_sunrise_card
+                  x: 244
+                  y: 340
+                  width: 212
+                  height: 96
+                  bg_color: 0x111827
+                  bg_opa: 96%
+                  border_width: 1
+                  border_color: 0x334155
+                  border_opa: 45%
+                  radius: 8
+                  shadow_width: 0
+                  pad_all: 0
+                  scrollbar_mode: "OFF"
+                  widgets:
+                    - label:
+                        id: weather_sunrise_icon
+                        x: 14
+                        y: 15
+                        width: 30
+                        height: 30
+                        text: "\U000F059C"
+                        text_font: mdi_icons_24
+                        text_color: 0xFBBF24
+                        text_align: CENTER
+                    - label:
+                        id: weather_sunrise_label
+                        x: 52
+                        y: 16
+                        width: 142
+                        height: 18
+                        text: "Lever soleil"
+                        text_font: montserrat_14
+                        text_color: 0x94A3B8
+                        long_mode: CLIP
+                    - label:
+                        id: weather_sunrise_value
+                        x: 52
+                        y: 42
+                        width: 136
+                        height: 34
+                        text: "--:--"
+                        text_font: montserrat_26
+                        text_color: 0xF8FAFC
+                        long_mode: CLIP
+
+              - obj:
+                  id: weather_sunset_card
+                  x: 472
+                  y: 340
+                  width: 212
+                  height: 96
+                  bg_color: 0x111827
+                  bg_opa: 96%
+                  border_width: 1
+                  border_color: 0x334155
+                  border_opa: 45%
+                  radius: 8
+                  shadow_width: 0
+                  pad_all: 0
+                  scrollbar_mode: "OFF"
+                  widgets:
+                    - label:
+                        id: weather_sunset_icon
+                        x: 14
+                        y: 15
+                        width: 30
+                        height: 30
+                        text: "\U000F059B"
+                        text_font: mdi_icons_24
+                        text_color: 0xF97316
+                        text_align: CENTER
+                    - label:
+                        id: weather_sunset_label
+                        x: 52
+                        y: 16
+                        width: 142
+                        height: 18
+                        text: "Coucher soleil"
+                        text_font: montserrat_14
+                        text_color: 0x94A3B8
+                        long_mode: CLIP
+                    - label:
+                        id: weather_sunset_value
+                        x: 52
+                        y: 42
+                        width: 136
+                        height: 34
+                        text: "--:--"
+                        text_font: montserrat_26
+                        text_color: 0xF8FAFC
+                        long_mode: CLIP
+# <<< end LVGL Designer block <<<
