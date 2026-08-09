@@ -73,6 +73,11 @@ wifi:
     ssid: "Waveshare-Bathroom-Fallback"
 captive_portal:
 
+# Heure locale synchronisée par Home Assistant.
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
 # =============================
 # HOME ASSISTANT DATA
 # =============================
@@ -206,12 +211,73 @@ text_sensor:
               return value;
             };
 
+            auto parse_utc_epoch = [](const char *raw, time_t &epoch) -> bool {
+              if (raw == nullptr || raw[0] == '\0') {
+                return false;
+              }
+
+              int year = 0;
+              int month = 0;
+              int day = 0;
+              int hour = 0;
+              int minute = 0;
+              int second = 0;
+              if (sscanf(raw, "%d-%d-%dT%d:%d:%d", &year, &month, &day, &hour, &minute, &second) < 5 &&
+                  sscanf(raw, "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second) < 5) {
+                return false;
+              }
+
+              ESPTime parsed{};
+              parsed.year = year;
+              parsed.month = month;
+              parsed.day_of_month = day;
+              parsed.hour = hour;
+              parsed.minute = minute;
+              parsed.second = second;
+              parsed.recalc_timestamp_utc(false);
+              if (parsed.timestamp < 0) {
+                return false;
+              }
+
+              epoch = parsed.timestamp;
+              return true;
+            };
+
+            auto local_hhmm = [&](const char *raw) -> std::string {
+              time_t epoch = 0;
+              if (!parse_utc_epoch(raw, epoch)) {
+                return compact_time(raw);
+              }
+
+              ESPTime local_time = ESPTime::from_epoch_local(epoch);
+              if (!local_time.is_valid(false, false)) {
+                return compact_time(raw);
+              }
+
+              char buffer[8];
+              local_time.strftime(buffer, sizeof(buffer), "%H:%M");
+              return buffer;
+            };
+
+            auto last_sync_text = [&](const char *raw) -> std::string {
+              return "MAJ " + local_hhmm(raw);
+            };
+
             auto condition_icon_for = [](const char *condition_code) -> const char * {
               if (condition_code == nullptr) {
                 return "\U000F0595";
               }
 
               std::string condition_probe(condition_code);
+              if (condition_probe.find("thunder") != std::string::npos || condition_probe.find("lightning") != std::string::npos) {
+                return "\U000F0593";
+              }
+              if (condition_probe.find("snow") != std::string::npos || condition_probe.find("sleet") != std::string::npos) {
+                return "\U000F0598";
+              }
+              if (condition_probe.find("fog") != std::string::npos || condition_probe.find("mist") != std::string::npos) {
+                return "\U000F0591";
+              }
               if (condition_probe.find("rain") != std::string::npos || condition_probe.find("pouring") != std::string::npos) {
                 return "\U000F0597";
               }
@@ -222,6 +288,44 @@ text_sensor:
                 return "\U000F0590";
               }
               return "\U000F0595";
+            };
+
+            auto condition_color_for = [](const char *condition_code) -> uint32_t {
+              if (condition_code == nullptr) {
+                return 0xCBD5E1;
+              }
+
+              std::string condition_probe(condition_code);
+              if (condition_probe.find("thunder") != std::string::npos || condition_probe.find("lightning") != std::string::npos) {
+                return 0xA78BFA;
+              }
+              if (condition_probe.find("snow") != std::string::npos || condition_probe.find("sleet") != std::string::npos) {
+                return 0xBAE6FD;
+              }
+              if (condition_probe.find("fog") != std::string::npos || condition_probe.find("mist") != std::string::npos) {
+                return 0x94A3B8;
+              }
+              if (condition_probe.find("rain") != std::string::npos || condition_probe.find("pouring") != std::string::npos) {
+                return 0x60A5FA;
+              }
+              if (condition_probe.find("sunny") != std::string::npos || condition_probe.find("clear") != std::string::npos) {
+                return 0xFACC15;
+              }
+              if (condition_probe.find("partly") != std::string::npos) {
+                return 0xFDE68A;
+              }
+              if (condition_probe.find("cloud") != std::string::npos || condition_probe.find("overcast") != std::string::npos) {
+                return 0xCBD5E1;
+              }
+              return 0xCBD5E1;
+            };
+
+            auto set_icon_color = [](lv_obj_t *label, uint32_t color) {
+              lv_obj_set_style_text_color(
+                label,
+                lv_color_make((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF),
+                LV_PART_MAIN
+              );
             };
 
             bool parsed = json::parse_json(
@@ -249,11 +353,16 @@ text_sensor:
 
                 const char *condition_code = current["condition"] | "";
                 const char *condition_icon = condition_icon_for(condition_code);
+                uint32_t condition_color = condition_color_for(condition_code);
 
                 set_text(id(weather_city_label), city);
                 set_text(id(weather_condition_label), condition_label);
                 set_text(id(weather_condition_icon), condition_icon);
+                set_icon_color(id(weather_condition_icon), condition_color);
                 set_float(id(weather_current_temperature_value), current["native_temperature"], "%.1f °C", "--.- °C");
+
+                std::string last_sync = last_sync_text(root["supplemental"]["source_updated_at"] | "");
+                lv_label_set_text(id(weather_last_sync_label), last_sync.c_str());
 
                 char apparent_buffer[40];
                 if (current["native_apparent_temperature"].isNull()) {
@@ -298,31 +407,57 @@ text_sensor:
                 lv_label_set_text(id(weather_sunrise_value), sunrise.c_str());
                 lv_label_set_text(id(weather_sunset_value), sunset.c_str());
 
-                auto set_hour = [&](JsonObject item, lv_obj_t *time_label, lv_obj_t *icon_label, lv_obj_t *temperature_label, lv_obj_t *wind_label, lv_obj_t *cloud_label) {
+                auto set_hour = [&](JsonObject item, lv_obj_t *time_label, lv_obj_t *icon_label, lv_obj_t *temperature_label, lv_obj_t *wind_label, lv_obj_t *precipitation_label) {
                   if (item.isNull()) {
                     lv_label_set_text(time_label, "--:--");
                     lv_label_set_text(icon_label, "\U000F0595");
+                    set_icon_color(icon_label, 0xCBD5E1);
                     lv_label_set_text(temperature_label, "--.-°");
                     lv_label_set_text(wind_label, "-- km/h");
-                    lv_label_set_text(cloud_label, "--%");
+                    lv_label_set_text(precipitation_label, "--mm - --%");
                     return;
                   }
 
-                  std::string hour = compact_time(item["datetime"] | "");
+                  const char *hour_condition = item["condition"] | "";
+                  std::string hour = local_hhmm(item["datetime"] | "");
                   lv_label_set_text(time_label, hour.c_str());
-                  lv_label_set_text(icon_label, condition_icon_for(item["condition"] | ""));
+                  lv_label_set_text(icon_label, condition_icon_for(hour_condition));
+                  set_icon_color(icon_label, condition_color_for(hour_condition));
                   set_float(temperature_label, item["native_temperature"], "%.1f°", "--.-°");
                   set_float(wind_label, item["native_wind_speed"], "%.0f km/h", "-- km/h");
-                  set_float(cloud_label, item["cloud_coverage"], "%.0f%%", "--%");
+
+                  char precipitation_buffer[40];
+                  if (item["native_precipitation"].isNull() && item["precipitation_probability"].isNull()) {
+                    snprintf(precipitation_buffer, sizeof(precipitation_buffer), "--mm - --%%");
+                  } else {
+                    snprintf(
+                      precipitation_buffer,
+                      sizeof(precipitation_buffer),
+                      "%.1fmm - %.0f%%",
+                      item["native_precipitation"] | 0.0f,
+                      item["precipitation_probability"] | 0.0f
+                    );
+                  }
+                  lv_label_set_text(precipitation_label, precipitation_buffer);
                 };
 
                 JsonArray hourly = root["forecast"]["hourly"].as<JsonArray>();
-                set_hour(hourly[0].as<JsonObject>(), id(hourly_forecast_1_time), id(hourly_forecast_1_icon), id(hourly_forecast_1_temperature), id(hourly_forecast_1_wind), id(hourly_forecast_1_cloud));
-                set_hour(hourly[1].as<JsonObject>(), id(hourly_forecast_2_time), id(hourly_forecast_2_icon), id(hourly_forecast_2_temperature), id(hourly_forecast_2_wind), id(hourly_forecast_2_cloud));
-                set_hour(hourly[2].as<JsonObject>(), id(hourly_forecast_3_time), id(hourly_forecast_3_icon), id(hourly_forecast_3_temperature), id(hourly_forecast_3_wind), id(hourly_forecast_3_cloud));
-                set_hour(hourly[3].as<JsonObject>(), id(hourly_forecast_4_time), id(hourly_forecast_4_icon), id(hourly_forecast_4_temperature), id(hourly_forecast_4_wind), id(hourly_forecast_4_cloud));
-                set_hour(hourly[4].as<JsonObject>(), id(hourly_forecast_5_time), id(hourly_forecast_5_icon), id(hourly_forecast_5_temperature), id(hourly_forecast_5_wind), id(hourly_forecast_5_cloud));
-                set_hour(hourly[5].as<JsonObject>(), id(hourly_forecast_6_time), id(hourly_forecast_6_icon), id(hourly_forecast_6_temperature), id(hourly_forecast_6_wind), id(hourly_forecast_6_cloud));
+                lv_obj_t *hourly_time_labels[] = {id(hourly_forecast_1_time), id(hourly_forecast_2_time), id(hourly_forecast_3_time), id(hourly_forecast_4_time), id(hourly_forecast_5_time), id(hourly_forecast_6_time), id(hourly_forecast_7_time), id(hourly_forecast_8_time), id(hourly_forecast_9_time), id(hourly_forecast_10_time), id(hourly_forecast_11_time), id(hourly_forecast_12_time)};
+                lv_obj_t *hourly_icon_labels[] = {id(hourly_forecast_1_icon), id(hourly_forecast_2_icon), id(hourly_forecast_3_icon), id(hourly_forecast_4_icon), id(hourly_forecast_5_icon), id(hourly_forecast_6_icon), id(hourly_forecast_7_icon), id(hourly_forecast_8_icon), id(hourly_forecast_9_icon), id(hourly_forecast_10_icon), id(hourly_forecast_11_icon), id(hourly_forecast_12_icon)};
+                lv_obj_t *hourly_temperature_labels[] = {id(hourly_forecast_1_temperature), id(hourly_forecast_2_temperature), id(hourly_forecast_3_temperature), id(hourly_forecast_4_temperature), id(hourly_forecast_5_temperature), id(hourly_forecast_6_temperature), id(hourly_forecast_7_temperature), id(hourly_forecast_8_temperature), id(hourly_forecast_9_temperature), id(hourly_forecast_10_temperature), id(hourly_forecast_11_temperature), id(hourly_forecast_12_temperature)};
+                lv_obj_t *hourly_wind_labels[] = {id(hourly_forecast_1_wind), id(hourly_forecast_2_wind), id(hourly_forecast_3_wind), id(hourly_forecast_4_wind), id(hourly_forecast_5_wind), id(hourly_forecast_6_wind), id(hourly_forecast_7_wind), id(hourly_forecast_8_wind), id(hourly_forecast_9_wind), id(hourly_forecast_10_wind), id(hourly_forecast_11_wind), id(hourly_forecast_12_wind)};
+                lv_obj_t *hourly_precipitation_labels[] = {id(hourly_forecast_1_cloud), id(hourly_forecast_2_cloud), id(hourly_forecast_3_cloud), id(hourly_forecast_4_cloud), id(hourly_forecast_5_cloud), id(hourly_forecast_6_cloud), id(hourly_forecast_7_cloud), id(hourly_forecast_8_cloud), id(hourly_forecast_9_cloud), id(hourly_forecast_10_cloud), id(hourly_forecast_11_cloud), id(hourly_forecast_12_cloud)};
+
+                for (uint8_t hour_index = 0; hour_index < 12; hour_index++) {
+                  set_hour(
+                    hourly[hour_index].as<JsonObject>(),
+                    hourly_time_labels[hour_index],
+                    hourly_icon_labels[hour_index],
+                    hourly_temperature_labels[hour_index],
+                    hourly_wind_labels[hour_index],
+                    hourly_precipitation_labels[hour_index]
+                  );
+                }
 
                 return true;
               }
@@ -353,6 +488,9 @@ font:
       - "\U000F0599"  # Ensoleillé
       - "\U000F0590"  # Nuageux
       - "\U000F0597"  # Pluie
+      - "\U000F0598"  # Neige
+      - "\U000F0591"  # Brouillard
+      - "\U000F0593"  # Orage
       - "\U000F059C"  # Lever du soleil
       - "\U000F059B"  # Coucher du soleil
   - file:
@@ -365,6 +503,9 @@ font:
       - "\U000F0599"  # Ensoleillé
       - "\U000F0590"  # Nuageux
       - "\U000F0597"  # Pluie
+      - "\U000F0598"  # Neige
+      - "\U000F0591"  # Brouillard
+      - "\U000F0593"  # Orage
   - file:
       url: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
       type: web
@@ -376,6 +517,9 @@ font:
       - "\U000F0599"  # Ensoleillé
       - "\U000F0590"  # Nuageux
       - "\U000F0597"  # Pluie
+      - "\U000F0598"  # Neige
+      - "\U000F0591"  # Brouillard
+      - "\U000F0593"  # Orage
 
 lvgl:
   displays:
@@ -732,6 +876,17 @@ lvgl:
                         text_color: 0xBFDBFE
                         long_mode: CLIP
                     - label:
+                        id: weather_last_sync_label
+                        x: 286
+                        y: 260
+                        width: 136
+                        height: 18
+                        text: "MAJ --:--"
+                        text_font: montserrat_12
+                        text_color: 0x94A3B8
+                        text_align: RIGHT
+                        long_mode: CLIP
+                    - label:
                         id: weather_condition_icon
                         x: 346
                         y: 16
@@ -739,7 +894,7 @@ lvgl:
                         height: 58
                         text: "\U000F0595"
                         text_font: mdi_icons_48
-                        text_color: 0xFACC15
+                        text_color: 0xCBD5E1
                         text_align: CENTER
                     - label:
                         id: weather_current_temperature_value
@@ -1045,7 +1200,7 @@ lvgl:
                   radius: 8
                   shadow_width: 0
                   pad_all: 0
-                  scrollbar_mode: "OFF"
+                  scrollbar_mode: "AUTO"
                   widgets:
                     - label:
                         id: weather_sunrise_icon
@@ -1173,7 +1328,7 @@ lvgl:
                               height: 34
                               text: "\U000F0595"
                               text_font: mdi_icons_32
-                              text_color: 0xFACC15
+                              text_color: 0xCBD5E1
                               text_align: CENTER
                           - label:
                               id: hourly_forecast_1_temperature
@@ -1203,7 +1358,7 @@ lvgl:
                               y: 106
                               width: 100
                               height: 16
-                              text: "--%"
+                              text: "--mm - --%"
                               text_font: montserrat_12
                               text_color: 0x60A5FA
                               text_align: CENTER
@@ -1239,7 +1394,7 @@ lvgl:
                               height: 34
                               text: "\U000F0595"
                               text_font: mdi_icons_32
-                              text_color: 0xFACC15
+                              text_color: 0xCBD5E1
                               text_align: CENTER
                           - label:
                               id: hourly_forecast_2_temperature
@@ -1269,7 +1424,7 @@ lvgl:
                               y: 106
                               width: 100
                               height: 16
-                              text: "--%"
+                              text: "--mm - --%"
                               text_font: montserrat_12
                               text_color: 0x60A5FA
                               text_align: CENTER
@@ -1305,7 +1460,7 @@ lvgl:
                               height: 34
                               text: "\U000F0595"
                               text_font: mdi_icons_32
-                              text_color: 0xFACC15
+                              text_color: 0xCBD5E1
                               text_align: CENTER
                           - label:
                               id: hourly_forecast_3_temperature
@@ -1335,7 +1490,7 @@ lvgl:
                               y: 106
                               width: 100
                               height: 16
-                              text: "--%"
+                              text: "--mm - --%"
                               text_font: montserrat_12
                               text_color: 0x60A5FA
                               text_align: CENTER
@@ -1371,7 +1526,7 @@ lvgl:
                               height: 34
                               text: "\U000F0595"
                               text_font: mdi_icons_32
-                              text_color: 0xFACC15
+                              text_color: 0xCBD5E1
                               text_align: CENTER
                           - label:
                               id: hourly_forecast_4_temperature
@@ -1401,7 +1556,7 @@ lvgl:
                               y: 106
                               width: 100
                               height: 16
-                              text: "--%"
+                              text: "--mm - --%"
                               text_font: montserrat_12
                               text_color: 0x60A5FA
                               text_align: CENTER
@@ -1437,7 +1592,7 @@ lvgl:
                               height: 34
                               text: "\U000F0595"
                               text_font: mdi_icons_32
-                              text_color: 0xFACC15
+                              text_color: 0xCBD5E1
                               text_align: CENTER
                           - label:
                               id: hourly_forecast_5_temperature
@@ -1467,7 +1622,7 @@ lvgl:
                               y: 106
                               width: 100
                               height: 16
-                              text: "--%"
+                              text: "--mm - --%"
                               text_font: montserrat_12
                               text_color: 0x60A5FA
                               text_align: CENTER
@@ -1503,7 +1658,7 @@ lvgl:
                               height: 34
                               text: "\U000F0595"
                               text_font: mdi_icons_32
-                              text_color: 0xFACC15
+                              text_color: 0xCBD5E1
                               text_align: CENTER
                           - label:
                               id: hourly_forecast_6_temperature
@@ -1533,7 +1688,403 @@ lvgl:
                               y: 106
                               width: 100
                               height: 16
-                              text: "--%"
+                              text: "--mm - --%"
+                              text_font: montserrat_12
+                              text_color: 0x60A5FA
+                              text_align: CENTER
+                              long_mode: CLIP
+
+                    - obj:
+                        id: hourly_forecast_7_slot
+                        x: 654
+                        y: 10
+                        width: 100
+                        height: 116
+                        bg_opa: 0%
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        widgets:
+                          - label:
+                              id: hourly_forecast_7_time
+                              x: 0
+                              y: 0
+                              width: 100
+                              height: 18
+                              text: "--:--"
+                              text_font: montserrat_14
+                              text_color: 0xCBD5E1
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_7_icon
+                              x: 0
+                              y: 24
+                              width: 100
+                              height: 34
+                              text: "\U000F0595"
+                              text_font: mdi_icons_32
+                              text_color: 0xCBD5E1
+                              text_align: CENTER
+                          - label:
+                              id: hourly_forecast_7_temperature
+                              x: 0
+                              y: 60
+                              width: 100
+                              height: 26
+                              text: "--.-°"
+                              text_font: montserrat_20
+                              text_color: 0xF8FAFC
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_7_wind
+                              x: 0
+                              y: 88
+                              width: 100
+                              height: 16
+                              text: "-- km/h"
+                              text_font: montserrat_12
+                              text_color: 0x94A3B8
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_7_cloud
+                              x: 0
+                              y: 106
+                              width: 100
+                              height: 16
+                              text: "--mm - --%"
+                              text_font: montserrat_12
+                              text_color: 0x60A5FA
+                              text_align: CENTER
+                              long_mode: CLIP
+
+                    - obj:
+                        id: hourly_forecast_8_slot
+                        x: 761
+                        y: 10
+                        width: 100
+                        height: 116
+                        bg_opa: 0%
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        widgets:
+                          - label:
+                              id: hourly_forecast_8_time
+                              x: 0
+                              y: 0
+                              width: 100
+                              height: 18
+                              text: "--:--"
+                              text_font: montserrat_14
+                              text_color: 0xCBD5E1
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_8_icon
+                              x: 0
+                              y: 24
+                              width: 100
+                              height: 34
+                              text: "\U000F0595"
+                              text_font: mdi_icons_32
+                              text_color: 0xCBD5E1
+                              text_align: CENTER
+                          - label:
+                              id: hourly_forecast_8_temperature
+                              x: 0
+                              y: 60
+                              width: 100
+                              height: 26
+                              text: "--.-°"
+                              text_font: montserrat_20
+                              text_color: 0xF8FAFC
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_8_wind
+                              x: 0
+                              y: 88
+                              width: 100
+                              height: 16
+                              text: "-- km/h"
+                              text_font: montserrat_12
+                              text_color: 0x94A3B8
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_8_cloud
+                              x: 0
+                              y: 106
+                              width: 100
+                              height: 16
+                              text: "--mm - --%"
+                              text_font: montserrat_12
+                              text_color: 0x60A5FA
+                              text_align: CENTER
+                              long_mode: CLIP
+
+                    - obj:
+                        id: hourly_forecast_9_slot
+                        x: 868
+                        y: 10
+                        width: 100
+                        height: 116
+                        bg_opa: 0%
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        widgets:
+                          - label:
+                              id: hourly_forecast_9_time
+                              x: 0
+                              y: 0
+                              width: 100
+                              height: 18
+                              text: "--:--"
+                              text_font: montserrat_14
+                              text_color: 0xCBD5E1
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_9_icon
+                              x: 0
+                              y: 24
+                              width: 100
+                              height: 34
+                              text: "\U000F0595"
+                              text_font: mdi_icons_32
+                              text_color: 0xCBD5E1
+                              text_align: CENTER
+                          - label:
+                              id: hourly_forecast_9_temperature
+                              x: 0
+                              y: 60
+                              width: 100
+                              height: 26
+                              text: "--.-°"
+                              text_font: montserrat_20
+                              text_color: 0xF8FAFC
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_9_wind
+                              x: 0
+                              y: 88
+                              width: 100
+                              height: 16
+                              text: "-- km/h"
+                              text_font: montserrat_12
+                              text_color: 0x94A3B8
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_9_cloud
+                              x: 0
+                              y: 106
+                              width: 100
+                              height: 16
+                              text: "--mm - --%"
+                              text_font: montserrat_12
+                              text_color: 0x60A5FA
+                              text_align: CENTER
+                              long_mode: CLIP
+
+                    - obj:
+                        id: hourly_forecast_10_slot
+                        x: 975
+                        y: 10
+                        width: 100
+                        height: 116
+                        bg_opa: 0%
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        widgets:
+                          - label:
+                              id: hourly_forecast_10_time
+                              x: 0
+                              y: 0
+                              width: 100
+                              height: 18
+                              text: "--:--"
+                              text_font: montserrat_14
+                              text_color: 0xCBD5E1
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_10_icon
+                              x: 0
+                              y: 24
+                              width: 100
+                              height: 34
+                              text: "\U000F0595"
+                              text_font: mdi_icons_32
+                              text_color: 0xCBD5E1
+                              text_align: CENTER
+                          - label:
+                              id: hourly_forecast_10_temperature
+                              x: 0
+                              y: 60
+                              width: 100
+                              height: 26
+                              text: "--.-°"
+                              text_font: montserrat_20
+                              text_color: 0xF8FAFC
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_10_wind
+                              x: 0
+                              y: 88
+                              width: 100
+                              height: 16
+                              text: "-- km/h"
+                              text_font: montserrat_12
+                              text_color: 0x94A3B8
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_10_cloud
+                              x: 0
+                              y: 106
+                              width: 100
+                              height: 16
+                              text: "--mm - --%"
+                              text_font: montserrat_12
+                              text_color: 0x60A5FA
+                              text_align: CENTER
+                              long_mode: CLIP
+
+                    - obj:
+                        id: hourly_forecast_11_slot
+                        x: 1082
+                        y: 10
+                        width: 100
+                        height: 116
+                        bg_opa: 0%
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        widgets:
+                          - label:
+                              id: hourly_forecast_11_time
+                              x: 0
+                              y: 0
+                              width: 100
+                              height: 18
+                              text: "--:--"
+                              text_font: montserrat_14
+                              text_color: 0xCBD5E1
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_11_icon
+                              x: 0
+                              y: 24
+                              width: 100
+                              height: 34
+                              text: "\U000F0595"
+                              text_font: mdi_icons_32
+                              text_color: 0xCBD5E1
+                              text_align: CENTER
+                          - label:
+                              id: hourly_forecast_11_temperature
+                              x: 0
+                              y: 60
+                              width: 100
+                              height: 26
+                              text: "--.-°"
+                              text_font: montserrat_20
+                              text_color: 0xF8FAFC
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_11_wind
+                              x: 0
+                              y: 88
+                              width: 100
+                              height: 16
+                              text: "-- km/h"
+                              text_font: montserrat_12
+                              text_color: 0x94A3B8
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_11_cloud
+                              x: 0
+                              y: 106
+                              width: 100
+                              height: 16
+                              text: "--mm - --%"
+                              text_font: montserrat_12
+                              text_color: 0x60A5FA
+                              text_align: CENTER
+                              long_mode: CLIP
+
+                    - obj:
+                        id: hourly_forecast_12_slot
+                        x: 1189
+                        y: 10
+                        width: 100
+                        height: 116
+                        bg_opa: 0%
+                        border_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        widgets:
+                          - label:
+                              id: hourly_forecast_12_time
+                              x: 0
+                              y: 0
+                              width: 100
+                              height: 18
+                              text: "--:--"
+                              text_font: montserrat_14
+                              text_color: 0xCBD5E1
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_12_icon
+                              x: 0
+                              y: 24
+                              width: 100
+                              height: 34
+                              text: "\U000F0595"
+                              text_font: mdi_icons_32
+                              text_color: 0xCBD5E1
+                              text_align: CENTER
+                          - label:
+                              id: hourly_forecast_12_temperature
+                              x: 0
+                              y: 60
+                              width: 100
+                              height: 26
+                              text: "--.-°"
+                              text_font: montserrat_20
+                              text_color: 0xF8FAFC
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_12_wind
+                              x: 0
+                              y: 88
+                              width: 100
+                              height: 16
+                              text: "-- km/h"
+                              text_font: montserrat_12
+                              text_color: 0x94A3B8
+                              text_align: CENTER
+                              long_mode: CLIP
+                          - label:
+                              id: hourly_forecast_12_cloud
+                              x: 0
+                              y: 106
+                              width: 100
+                              height: 16
+                              text: "--mm - --%"
                               text_font: montserrat_12
                               text_color: 0x60A5FA
                               text_align: CENTER
