@@ -295,10 +295,8 @@ lvgl:
       text_font: montserrat_22
       text_align: LEFT
       text: "Attente météo..."
-      
 # >>> LVGL Designer - generated from the canvas. >>>
 # This block is regenerated from the canvas — edits here are not preserved.
-lvgl:
   pages:
     - id: canvas_2
       bg_color: 0x111827
