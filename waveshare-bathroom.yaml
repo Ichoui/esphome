@@ -78,7 +78,7 @@ captive_portal:
 # =============================
 
 sensor:
-  # températures
+  # Températures locales réelles exposées par Home Assistant.
   - platform: homeassistant
     id: indoor_temperature
     entity_id: sensor.thermo_int_temperature
@@ -101,7 +101,7 @@ sensor:
               format: "%.1f °C"
               args: [x]
 
-  # humidités
+  # Humidités locales réelles exposées par Home Assistant.
   - platform: homeassistant
     id: indoor_humidity
     entity_id: sensor.thermo_int_humidite
@@ -132,101 +132,171 @@ sensor:
               format: "%.0f%%"
               args: [x]
 
-  # Humidex
+  # Humidex extérieur réel exposé par Home Assistant.
   - platform: homeassistant
     id: humidex_out
     entity_id: sensor.thermo_ext_humidex
-    
-json: 
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: humidex_out_value
+            text:
+              format: "%.0f"
+              args: [x]
+
+json:
+
 text_sensor:
-  # Météo - condition actuelle
+  # Fallback simple si le gros JSON météo n'est pas encore arrivé.
   - platform: homeassistant
     id: weather_condition
     entity_id: weather.saint_georges
     on_value:
       then:
         - lvgl.label.update:
-            id: lbl_weather_condition
+            id: weather_condition_label
             text: !lambda return x;
 
+  # Conservé pour tests HA; les cartes lever/coucher utilisent weather_data.
   - platform: homeassistant
     id: sunset_sunrise
     entity_id: sensor.soleil_coucher_lever
-    on_value:
-      then:
-        - lvgl.label.update:
-            id: lbl_sunset_sunrise
-            text: !lambda return x;
 
-  # Météo - dataset complet
+  # Dataset météo complet relayé par Home Assistant.
   - platform: homeassistant
     id: weather_data
     entity_id: sensor.saint_georges_esphome_weather
     attribute: data
-
     on_value:
       then:
         - logger.log:
             format: "Weather payload reçu : %u bytes"
             args: [ 'x.size()' ]
+        - lambda: |-
+            auto set_text = [](auto label, const char *value) {
+              lv_label_set_text(label, value == nullptr || value[0] == '\0' ? "--" : value);
+            };
 
-        - lvgl.label.update:
-            id: lbl_weather_current
-            text: !lambda |-
-              std::string output;
+            auto set_float = [](auto label, JsonVariant value, const char *format, const char *fallback) {
+              if (value.isNull()) {
+                lv_label_set_text(label, fallback);
+                return;
+              }
+              char buffer[32];
+              snprintf(buffer, sizeof(buffer), format, value.as<float>());
+              lv_label_set_text(label, buffer);
+            };
 
-              bool parsed = json::parse_json(
-                x,
-                [&output](JsonObject root) -> bool {
-                  if (!root["current"]) {
-                    output = "JSON OK\nMais current absent";
-                    return true;
-                  }
-
-                  JsonObject current = root["current"];
-
-                  const char *condition =
-                    current["condition"] | "unknown";
-
-                  char buffer[512];
-
-                  snprintf(
-                    buffer,
-                    sizeof(buffer),
-                    "%s\n\n"
-                    "Température : %.1f °C\n"
-                    "Ressenti : %.1f °C\n"
-                    "Humidite : %.0f %%\n"
-                    "Précipitations : %.1f mm\n"
-                    "Vent : %.1f km/h\n"
-                    "Rafales : %.1f km/h\n"
-                    "Pression : %.1f hPa\n"
-                    "Visibilité : %.1f km\n"
-                    "UV : %.2f\n"
-                    "Nuages : %.0f %%",
-                    condition,
-                    current["native_temperature"].as<float>(),
-                    current["native_apparent_temperature"].as<float>(),
-                    current["humidity"].as<float>(),
-                    current["native_precipitation"].as<float>(),
-                    current["native_wind_speed"].as<float>(),
-                    current["native_wind_gust_speed"].as<float>(),
-                    current["native_pressure"].as<float>(),
-                    current["native_visibility"].as<float>(),
-                    current["uv_index"].as<float>(),
-                    current["cloud_coverage"].as<float>()
-                  );
-
-                  output = buffer;
-                  return true;
-                }
-              );
-
-              if (!parsed) {
-                return std::string("JSON réellement invalide");
+            auto compact_time = [](const char *raw) -> std::string {
+              if (raw == nullptr || raw[0] == '\0') {
+                return "--:--";
               }
 
-              return output;
+              std::string value(raw);
+              size_t separator = value.find('T');
+              if (separator == std::string::npos) {
+                separator = value.find(' ');
+              }
+              if (separator != std::string::npos && value.size() >= separator + 6) {
+                return value.substr(separator + 1, 5);
+              }
+              if (value.size() >= 5 && value[2] == ':') {
+                return value.substr(0, 5);
+              }
+              return value;
+            };
+
+            bool parsed = json::parse_json(
+              x,
+              [&](JsonObject root) -> bool {
+                JsonObject current = root["current"].as<JsonObject>();
+                if (current.isNull()) {
+                  set_text(id(weather_condition_label), "Météo indisponible");
+                  return true;
+                }
+
+                JsonObject supplemental_current = root["supplemental"]["current"].as<JsonObject>();
+                JsonObject today = root["supplemental"]["daily"][0].as<JsonObject>();
+
+                const char *city = "Saint-Georges";
+                const char *city_candidate = root["location"]["name"] | "";
+                if (city_candidate[0] == '\0') city_candidate = root["location"]["city"] | "";
+                if (city_candidate[0] == '\0') city_candidate = root["city"] | "";
+                if (city_candidate[0] == '\0') city_candidate = root["name"] | "";
+                if (city_candidate[0] == '\0') city_candidate = root["metadata"]["city"] | "";
+                if (city_candidate[0] != '\0') city = city_candidate;
+
+                const char *condition_label = supplemental_current["condition_label_fr"] | "";
+                if (condition_label[0] == '\0') condition_label = current["condition"] | "Météo";
+
+                const char *condition_code = current["condition"] | "";
+                std::string condition_probe(condition_code);
+                const char *condition_icon = "\U000F0595";
+                if (condition_probe.find("partly") != std::string::npos) {
+                  condition_icon = "\U000F0595";
+                } else if (condition_probe.find("rain") != std::string::npos) {
+                  condition_icon = "\U000F0597";
+                } else if (condition_probe.find("sunny") != std::string::npos || condition_probe.find("clear") != std::string::npos) {
+                  condition_icon = "\U000F0599";
+                } else if (condition_probe.find("cloud") != std::string::npos) {
+                  condition_icon = "\U000F0590";
+                }
+
+                set_text(id(weather_city_label), city);
+                set_text(id(weather_condition_label), condition_label);
+                set_text(id(weather_condition_icon), condition_icon);
+                set_float(id(weather_current_temperature_value), current["native_temperature"], "%.1f °C", "--.- °C");
+
+                char apparent_buffer[40];
+                if (current["native_apparent_temperature"].isNull()) {
+                  snprintf(apparent_buffer, sizeof(apparent_buffer), "Ressenti --.- °C");
+                } else {
+                  snprintf(apparent_buffer, sizeof(apparent_buffer), "Ressenti %.1f °C", current["native_apparent_temperature"].as<float>());
+                }
+                lv_label_set_text(id(weather_apparent_temperature_value), apparent_buffer);
+
+                char wind_buffer[40];
+                if (current["native_wind_speed"].isNull() && current["native_wind_gust_speed"].isNull()) {
+                  snprintf(wind_buffer, sizeof(wind_buffer), "-- / -- km/h");
+                } else {
+                  snprintf(
+                    wind_buffer,
+                    sizeof(wind_buffer),
+                    "%.0f / %.0f km/h",
+                    current["native_wind_speed"] | 0.0f,
+                    current["native_wind_gust_speed"] | 0.0f
+                  );
+                }
+                lv_label_set_text(id(weather_wind_value), wind_buffer);
+
+                set_float(id(weather_uv_value), current["uv_index"], "%.1f", "--");
+
+                char cloud_rain_buffer[40];
+                if (current["cloud_coverage"].isNull() && current["native_precipitation"].isNull()) {
+                  snprintf(cloud_rain_buffer, sizeof(cloud_rain_buffer), "--%% / -- mm");
+                } else {
+                  snprintf(
+                    cloud_rain_buffer,
+                    sizeof(cloud_rain_buffer),
+                    "%.0f%% / %.1f mm",
+                    current["cloud_coverage"] | 0.0f,
+                    current["native_precipitation"] | 0.0f
+                  );
+                }
+                lv_label_set_text(id(weather_cloud_rain_value), cloud_rain_buffer);
+
+                std::string sunrise = compact_time(today["sunrise_at"] | "");
+                std::string sunset = compact_time(today["sunset_at"] | "");
+                lv_label_set_text(id(weather_sunrise_value), sunrise.c_str());
+                lv_label_set_text(id(weather_sunset_value), sunset.c_str());
+
+                return true;
+              }
+            );
+
+            if (!parsed) {
+              set_text(id(weather_condition_label), "JSON météo invalide");
+            }
 # =============================
 # INTERFACE
 # =============================
