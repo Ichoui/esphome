@@ -828,9 +828,7 @@ Demander à l'utilisateur de lancer `esphome config waveshare-bathroom.yaml` lor
 
 ## Commit & Pull Request Guidelines
 
-The current history uses short imperative messages like `Edit waveshare-bathroom.yaml`. Keep commits concise and focused, for example `Update bathroom weather layout` or `Fix outdoor humidity label`.
-
-Pull requests should describe the user-visible device change, list validation performed, and call out any required Home Assistant entity or `secrets.yaml` updates. Include screenshots or photos when changing the display layout.
+Interdiction d'utiliser GIT pour commiter / suivre des fichiers / pousser sur le repo github.
 
 ## Security & Configuration Tips
 
