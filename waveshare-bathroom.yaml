@@ -160,7 +160,30 @@ text_sensor:
       then:
         - lvgl.label.update:
             id: weather_condition_label
-            text: !lambda return x;
+            text: !lambda |-
+              // Montserrat embarqué ne rend pas toujours les glyphes accentués sur l'écran.
+              auto strip_accents = [](std::string value) -> std::string {
+                auto replace_all = [](std::string &target, const char *from, const char *to) {
+                  size_t pos = 0;
+                  while ((pos = target.find(from, pos)) != std::string::npos) {
+                    target.replace(pos, strlen(from), to);
+                    pos += strlen(to);
+                  }
+                };
+
+                replace_all(value, "à", "a"); replace_all(value, "á", "a"); replace_all(value, "â", "a"); replace_all(value, "ä", "a");
+                replace_all(value, "À", "A"); replace_all(value, "Á", "A"); replace_all(value, "Â", "A"); replace_all(value, "Ä", "A");
+                replace_all(value, "ç", "c"); replace_all(value, "Ç", "C");
+                replace_all(value, "é", "e"); replace_all(value, "è", "e"); replace_all(value, "ê", "e"); replace_all(value, "ë", "e");
+                replace_all(value, "É", "E"); replace_all(value, "È", "E"); replace_all(value, "Ê", "E"); replace_all(value, "Ë", "E");
+                replace_all(value, "î", "i"); replace_all(value, "ï", "i"); replace_all(value, "Î", "I"); replace_all(value, "Ï", "I");
+                replace_all(value, "ô", "o"); replace_all(value, "ö", "o"); replace_all(value, "Ô", "O"); replace_all(value, "Ö", "O");
+                replace_all(value, "ù", "u"); replace_all(value, "û", "u"); replace_all(value, "ü", "u");
+                replace_all(value, "Ù", "U"); replace_all(value, "Û", "U"); replace_all(value, "Ü", "U");
+                return value;
+              };
+
+              return strip_accents(x);
 
   # Conservé pour tests HA; les cartes lever/coucher utilisent weather_data.
   - platform: homeassistant
@@ -175,7 +198,7 @@ text_sensor:
     on_value:
       then:
         - logger.log:
-            format: "Weather payload reçu : %u bytes"
+            format: "Weather payload recu : %u bytes"
             args: [ 'x.size()' ]
         - lambda: |-
             auto set_text = [](auto label, const char *value) {
@@ -190,6 +213,36 @@ text_sensor:
               char buffer[32];
               snprintf(buffer, sizeof(buffer), format, value.as<float>());
               lv_label_set_text(label, buffer);
+            };
+
+            auto strip_accents = [](std::string value) -> std::string {
+              auto replace_all = [](std::string &target, const char *from, const char *to) {
+                size_t pos = 0;
+                while ((pos = target.find(from, pos)) != std::string::npos) {
+                  target.replace(pos, strlen(from), to);
+                  pos += strlen(to);
+                }
+              };
+
+              replace_all(value, "à", "a"); replace_all(value, "á", "a"); replace_all(value, "â", "a"); replace_all(value, "ä", "a");
+              replace_all(value, "À", "A"); replace_all(value, "Á", "A"); replace_all(value, "Â", "A"); replace_all(value, "Ä", "A");
+              replace_all(value, "ç", "c"); replace_all(value, "Ç", "C");
+              replace_all(value, "é", "e"); replace_all(value, "è", "e"); replace_all(value, "ê", "e"); replace_all(value, "ë", "e");
+              replace_all(value, "É", "E"); replace_all(value, "È", "E"); replace_all(value, "Ê", "E"); replace_all(value, "Ë", "E");
+              replace_all(value, "î", "i"); replace_all(value, "ï", "i"); replace_all(value, "Î", "I"); replace_all(value, "Ï", "I");
+              replace_all(value, "ô", "o"); replace_all(value, "ö", "o"); replace_all(value, "Ô", "O"); replace_all(value, "Ö", "O");
+              replace_all(value, "ù", "u"); replace_all(value, "û", "u"); replace_all(value, "ü", "u");
+              replace_all(value, "Ù", "U"); replace_all(value, "Û", "U"); replace_all(value, "Ü", "U");
+              return value;
+            };
+
+            auto set_text_ascii = [&](auto label, const char *value) {
+              if (value == nullptr || value[0] == '\0') {
+                lv_label_set_text(label, "--");
+                return;
+              }
+              std::string clean = strip_accents(value);
+              lv_label_set_text(label, clean.c_str());
             };
 
             auto compact_time = [](const char *raw) -> std::string {
@@ -333,7 +386,7 @@ text_sensor:
               [&](JsonObject root) -> bool {
                 JsonObject current = root["current"].as<JsonObject>();
                 if (current.isNull()) {
-                  set_text(id(weather_condition_label), "Météo indisponible");
+                  set_text(id(weather_condition_label), "Meteo indisponible");
                   return true;
                 }
 
@@ -349,14 +402,14 @@ text_sensor:
                 if (city_candidate[0] != '\0') city = city_candidate;
 
                 const char *condition_label = supplemental_current["condition_label_fr"] | "";
-                if (condition_label[0] == '\0') condition_label = current["condition"] | "Météo";
+                if (condition_label[0] == '\0') condition_label = current["condition"] | "Meteo";
 
                 const char *condition_code = current["condition"] | "";
                 const char *condition_icon = condition_icon_for(condition_code);
                 uint32_t condition_color = condition_color_for(condition_code);
 
-                set_text(id(weather_city_label), city);
-                set_text(id(weather_condition_label), condition_label);
+                set_text_ascii(id(weather_city_label), city);
+                set_text_ascii(id(weather_condition_label), condition_label);
                 set_text(id(weather_condition_icon), condition_icon);
                 set_icon_color(id(weather_condition_icon), condition_color);
                 set_float(id(weather_current_temperature_value), current["native_temperature"], "%.1f °C", "--.- °C");
@@ -464,7 +517,7 @@ text_sensor:
             );
 
             if (!parsed) {
-              set_text(id(weather_condition_label), "JSON météo invalide");
+              set_text(id(weather_condition_label), "JSON meteo invalide");
             }
 # =============================
 # INTERFACE
@@ -513,6 +566,7 @@ font:
     size: 48
     glyphs:
       - "\U000F18D6"  # Thermomètre soleil
+      - "\U000F0826"  # Maison
       - "\U000F0595"  # Partiellement nuageux
       - "\U000F0599"  # Ensoleillé
       - "\U000F0590"  # Nuageux
@@ -561,9 +615,9 @@ lvgl:
               - button:
                   id: tab_meteo_button
                   x: 8
-                  y: 36
+                  y: 130
                   width: 80
-                  height: 96
+                  height: 80
                   bg_color: 0x13233F
                   bg_opa: 100%
                   border_width: 1
@@ -576,74 +630,48 @@ lvgl:
                   on_click:
                     - lvgl.widget.show: meteo_content
                     - lvgl.widget.hide: [previsions_content, maison_content]
+                    - lambda: |-
+                        auto color = [](uint32_t hex) {
+                          return lv_color_make((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);
+                        };
+                        auto set_tab_state = [&](lv_obj_t *button, lv_obj_t *icon, lv_obj_t *label, bool active) {
+                          lv_obj_set_style_bg_color(button, color(active ? 0x13233F : 0x0B1220), LV_PART_MAIN);
+                          lv_obj_set_style_border_color(button, color(active ? 0x60A5FA : 0x263449), LV_PART_MAIN);
+                          lv_obj_set_style_border_opa(button, active ? LV_OPA_80 : LV_OPA_70, LV_PART_MAIN);
+                          lv_obj_set_style_text_color(icon, color(active ? 0xFFFFFF : 0xCBD5E1), LV_PART_MAIN);
+                          lv_obj_set_style_text_color(label, color(active ? 0x93C5FD : 0x94A3B8), LV_PART_MAIN);
+                        };
+                        set_tab_state(id(tab_meteo_button), id(tab_meteo_icon), id(tab_meteo_label), true);
+                        set_tab_state(id(tab_maison_button), id(tab_maison_icon), id(tab_maison_label), false);
                   widgets:
                     - label:
                         id: tab_meteo_icon
-                        x: 16
-                        y: 12
-                        width: 48
-                        height: 34
+                        x: 0
+                        y: 10
+                        width: 80
+                        height: 60
                         text: "\U000F18D6"
-                        text_font: mdi_icons_24
+                        text_font: mdi_icons_48
                         text_align: CENTER
                         text_color: 0xFFFFFF
                     - label:
                         id: tab_meteo_label
-                        x: 4
-                        y: 58
-                        width: 72
+                        x: 0
+                        y: 60
+                        width: 80
                         height: 20
-                        text: "Météo"
+                        hidden: true
+                        text: "Meteo"
                         text_font: montserrat_12
                         text_color: 0x93C5FD
                         text_align: CENTER
                         long_mode: CLIP
               - button:
-                  id: tab_previsions_button
-                  x: 8
-                  y: 192
-                  width: 80
-                  height: 96
-                  bg_color: 0x0B1220
-                  bg_opa: 100%
-                  border_width: 1
-                  border_color: 0x263449
-                  border_opa: 70%
-                  radius: 8
-                  shadow_width: 0
-                  pad_all: 0
-                  scrollbar_mode: "OFF"
-                  on_click:
-                    - lvgl.widget.show: previsions_content
-                    - lvgl.widget.hide: [meteo_content, maison_content]
-                  widgets:
-                    - label:
-                        id: tab_previsions_icon
-                        x: 16
-                        y: 12
-                        width: 48
-                        height: 34
-                        text: "\U000F0595"
-                        text_font: mdi_icons_24
-                        text_align: CENTER
-                        text_color: 0xCBD5E1
-                    - label:
-                        id: tab_previsions_label
-                        x: 4
-                        y: 58
-                        width: 72
-                        height: 20
-                        text: "Prévisions"
-                        text_font: montserrat_12
-                        text_color: 0x94A3B8
-                        text_align: CENTER
-                        long_mode: CLIP
-              - button:
                   id: tab_maison_button
                   x: 8
-                  y: 348
+                  y: 270
                   width: 80
-                  height: 96
+                  height: 80
                   bg_color: 0x0B1220
                   bg_opa: 100%
                   border_width: 1
@@ -656,23 +684,37 @@ lvgl:
                   on_click:
                     - lvgl.widget.show: maison_content
                     - lvgl.widget.hide: [meteo_content, previsions_content]
+                    - lambda: |-
+                        auto color = [](uint32_t hex) {
+                          return lv_color_make((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);
+                        };
+                        auto set_tab_state = [&](lv_obj_t *button, lv_obj_t *icon, lv_obj_t *label, bool active) {
+                          lv_obj_set_style_bg_color(button, color(active ? 0x13233F : 0x0B1220), LV_PART_MAIN);
+                          lv_obj_set_style_border_color(button, color(active ? 0x60A5FA : 0x263449), LV_PART_MAIN);
+                          lv_obj_set_style_border_opa(button, active ? LV_OPA_80 : LV_OPA_70, LV_PART_MAIN);
+                          lv_obj_set_style_text_color(icon, color(active ? 0xFFFFFF : 0xCBD5E1), LV_PART_MAIN);
+                          lv_obj_set_style_text_color(label, color(active ? 0x93C5FD : 0x94A3B8), LV_PART_MAIN);
+                        };
+                        set_tab_state(id(tab_meteo_button), id(tab_meteo_icon), id(tab_meteo_label), false);
+                        set_tab_state(id(tab_maison_button), id(tab_maison_icon), id(tab_maison_label), true);
                   widgets:
                     - label:
                         id: tab_maison_icon
-                        x: 16
-                        y: 12
-                        width: 48
-                        height: 34
+                        x: 0
+                        y: 10
+                        width: 80
+                        height: 60
                         text: "\U000F0826"
-                        text_font: mdi_icons_24
+                        text_font: mdi_icons_48
                         text_align: CENTER
                         text_color: 0xCBD5E1
                     - label:
                         id: tab_maison_label
-                        x: 4
-                        y: 58
-                        width: 72
+                        x: 0
+                        y: 60
+                        width: 80
                         height: 20
+                        hidden: true
                         text: "Maison"
                         text_font: montserrat_12
                         text_color: 0x94A3B8
@@ -696,7 +738,7 @@ lvgl:
                   align: CENTER
                   width: 260
                   height: 32
-                  text: "Prévisions"
+                  text: "Previsions"
                   text_font: montserrat_24
                   text_color: 0xF8FAFC
                   text_align: CENTER
@@ -757,7 +799,7 @@ lvgl:
                         y: 18
                         width: 112
                         height: 20
-                        text: "Intérieur"
+                        text: "Interieur"
                         text_font: montserrat_14
                         text_color: 0x94A3B8
                         long_mode: CLIP
@@ -794,7 +836,7 @@ lvgl:
                         y: 18
                         width: 112
                         height: 20
-                        text: "Humidité int."
+                        text: "Humidite int."
                         text_font: montserrat_14
                         text_color: 0x94A3B8
                         long_mode: CLIP
