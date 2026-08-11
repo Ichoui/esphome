@@ -9,6 +9,12 @@ esphome:
   name: ${name}
   name_add_mac_suffix: false
   friendly_name: ${friendly_name}
+  on_boot:
+    priority: -100
+    then:
+      - switch.template.publish:
+          id: display_backlight
+          state: ON
 
 # =============================
 # HARDWARE
@@ -47,6 +53,30 @@ touchscreen:
       ch422g: ch422g_hub
       number: 1
 
+    on_touch:
+      then:
+        - lambda: |-
+            auto now = id(homeassistant_time).now();
+            if (now.is_valid()) {
+              char buffer[24];
+              now.strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S");
+              id(last_touch_at).publish_state(buffer);
+            } else {
+              id(last_touch_at).publish_state("heure indisponible");
+            }
+        - if:
+            condition:
+              switch.is_off: display_backlight
+            then:
+              - globals.set:
+                  id: backlight_wake_guard
+                  value: 'true'
+              - switch.turn_on: display_backlight
+              - delay: 700ms
+              - globals.set:
+                  id: backlight_wake_guard
+                  value: 'false'
+
 # =============================
 # LOGS 
 # =============================
@@ -77,6 +107,57 @@ captive_portal:
 time:
   - platform: homeassistant
     id: homeassistant_time
+
+globals:
+  - id: backlight_enabled
+    type: bool
+    restore_value: no
+    initial_value: 'true'
+  - id: backlight_wake_guard
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+# =============================
+# HOME ASSISTANT CONTROLS
+# =============================
+
+switch:
+  - platform: template
+    id: display_backlight
+    name: "Waveshare Bathroom Backlight"
+    icon: mdi:monitor-shimmer
+    internal: false
+    lambda: |-
+      return id(backlight_enabled);
+    turn_on_action:
+      - lambda: |-
+          id(backlight_enabled) = true;
+          id(ch422g_hub).digital_write(2, true);
+          if (id(backlight_state_label) != nullptr) {
+            lv_label_set_text(id(backlight_state_label), "ON");
+          }
+          ESP_LOGI("backlight", "Retroeclairage allume");
+      - switch.template.publish:
+          id: display_backlight
+          state: ON
+    turn_off_action:
+      - lambda: |-
+          id(backlight_enabled) = false;
+          id(ch422g_hub).digital_write(2, false);
+          if (id(backlight_state_label) != nullptr) {
+            lv_label_set_text(id(backlight_state_label), "OFF");
+          }
+          ESP_LOGI("backlight", "Retroeclairage eteint");
+      - switch.template.publish:
+          id: display_backlight
+          state: OFF
+
+button:
+  - platform: restart
+    id: restart_device
+    name: "Waveshare Bathroom Restart"
+    entity_category: diagnostic
 
 # =============================
 # HOME ASSISTANT DATA
@@ -149,9 +230,41 @@ sensor:
               format: "%.0f"
               args: [x]
 
+  # Diagnostics exposes vers Home Assistant.
+  - platform: uptime
+    id: device_uptime
+    name: "Waveshare Bathroom Uptime"
+    update_interval: 60s
+    entity_category: diagnostic
+
+  - platform: wifi_signal
+    id: wifi_rssi
+    name: "Waveshare Bathroom WiFi RSSI"
+    update_interval: 60s
+    entity_category: diagnostic
+
 json:
 
 text_sensor:
+  # Diagnostics exposes vers Home Assistant.
+  - platform: wifi_info
+    ip_address:
+      id: wifi_ip_address
+      name: "Waveshare Bathroom IP Address"
+      entity_category: diagnostic
+
+  - platform: version
+    id: esphome_version
+    name: "Waveshare Bathroom ESPHome Version"
+    entity_category: diagnostic
+
+  - platform: template
+    id: last_touch_at
+    name: "Waveshare Bathroom Last Touch"
+    icon: mdi:gesture-tap
+    entity_category: diagnostic
+    update_interval: never
+
   # Fallback simple si le gros JSON météo n'est pas encore arrivé.
   - platform: homeassistant
     id: weather_condition
@@ -499,7 +612,7 @@ text_sensor:
                 lv_obj_t *hourly_icon_labels[] = {id(hourly_forecast_1_icon), id(hourly_forecast_2_icon), id(hourly_forecast_3_icon), id(hourly_forecast_4_icon), id(hourly_forecast_5_icon), id(hourly_forecast_6_icon), id(hourly_forecast_7_icon), id(hourly_forecast_8_icon), id(hourly_forecast_9_icon), id(hourly_forecast_10_icon), id(hourly_forecast_11_icon), id(hourly_forecast_12_icon)};
                 lv_obj_t *hourly_temperature_labels[] = {id(hourly_forecast_1_temperature), id(hourly_forecast_2_temperature), id(hourly_forecast_3_temperature), id(hourly_forecast_4_temperature), id(hourly_forecast_5_temperature), id(hourly_forecast_6_temperature), id(hourly_forecast_7_temperature), id(hourly_forecast_8_temperature), id(hourly_forecast_9_temperature), id(hourly_forecast_10_temperature), id(hourly_forecast_11_temperature), id(hourly_forecast_12_temperature)};
                 lv_obj_t *hourly_wind_labels[] = {id(hourly_forecast_1_wind), id(hourly_forecast_2_wind), id(hourly_forecast_3_wind), id(hourly_forecast_4_wind), id(hourly_forecast_5_wind), id(hourly_forecast_6_wind), id(hourly_forecast_7_wind), id(hourly_forecast_8_wind), id(hourly_forecast_9_wind), id(hourly_forecast_10_wind), id(hourly_forecast_11_wind), id(hourly_forecast_12_wind)};
-                lv_obj_t *hourly_precipitation_labels[] = {id(hourly_forecast_1_cloud), id(hourly_forecast_2_cloud), id(hourly_forecast_3_cloud), id(hourly_forecast_4_cloud), id(hourly_forecast_5_cloud), id(hourly_forecast_6_cloud), id(hourly_forecast_7_cloud), id(hourly_forecast_8_cloud), id(hourly_forecast_9_cloud), id(hourly_forecast_10_cloud), id(hourly_forecast_11_cloud), id(hourly_forecast_12_cloud)};
+                lv_obj_t *hourly_precipitation_labels[] = {id(hourly_forecast_1_precipitation), id(hourly_forecast_2_precipitation), id(hourly_forecast_3_precipitation), id(hourly_forecast_4_precipitation), id(hourly_forecast_5_precipitation), id(hourly_forecast_6_precipitation), id(hourly_forecast_7_precipitation), id(hourly_forecast_8_precipitation), id(hourly_forecast_9_precipitation), id(hourly_forecast_10_precipitation), id(hourly_forecast_11_precipitation), id(hourly_forecast_12_precipitation)};
 
                 for (uint8_t hour_index = 0; hour_index < 12; hour_index++) {
                   set_hour(
@@ -766,6 +879,78 @@ lvgl:
                   text_font: montserrat_24
                   text_color: 0xF8FAFC
                   long_mode: CLIP
+
+              - obj:
+                  id: backlight_card
+                  x: 464
+                  y: 96
+                  width: 204
+                  height: 112
+                  bg_color: 0x111827
+                  bg_opa: 96%
+                  border_width: 1
+                  border_color: 0x334155
+                  border_opa: 45%
+                  radius: 8
+                  shadow_width: 0
+                  pad_all: 0
+                  scrollbar_mode: "OFF"
+                  widgets:
+                    - label:
+                        id: backlight_label
+                        x: 18
+                        y: 18
+                        width: 116
+                        height: 20
+                        text: "Retroeclairage"
+                        text_font: montserrat_14
+                        text_color: 0x94A3B8
+                        long_mode: CLIP
+                    - label:
+                        id: backlight_state_label
+                        x: 138
+                        y: 16
+                        width: 48
+                        height: 24
+                        text: "ON"
+                        text_font: montserrat_18
+                        text_color: 0xF8FAFC
+                        text_align: RIGHT
+                        long_mode: CLIP
+                    - button:
+                        id: backlight_off_button
+                        x: 18
+                        y: 58
+                        width: 168
+                        height: 38
+                        bg_color: 0x1F2937
+                        bg_opa: 100%
+                        border_width: 1
+                        border_color: 0x4F46E5
+                        border_opa: 80%
+                        radius: 8
+                        shadow_width: 0
+                        pad_all: 0
+                        scrollbar_mode: "OFF"
+                        on_click:
+                          - if:
+                              condition:
+                                lambda: return !id(backlight_wake_guard);
+                              then:
+                                - switch.turn_off: display_backlight
+                              else:
+                                - lambda: ESP_LOGD("backlight", "Clic ignore pendant le reveil tactile");
+                        widgets:
+                          - label:
+                              id: backlight_off_button_label
+                              align: CENTER
+                              width: 150
+                              height: 20
+                              text: "Eteindre"
+                              text_font: montserrat_14
+                              text_color: 0xF8FAFC
+                              text_align: CENTER
+                              long_mode: CLIP
 
               - obj:
                   id: indoor_temperature_card
@@ -1345,7 +1530,7 @@ lvgl:
                         x: 12
                         y: 10
                         width: 100
-                        height: 116
+                        height: 126
                         bg_opa: 0%
                         border_width: 0
                         pad_all: 0
@@ -1395,7 +1580,7 @@ lvgl:
                               text_align: CENTER
                               long_mode: CLIP
                           - label:
-                              id: hourly_forecast_1_cloud
+                              id: hourly_forecast_1_precipitation
                               x: 0
                               y: 106
                               width: 100
@@ -1411,7 +1596,7 @@ lvgl:
                         x: 119
                         y: 10
                         width: 100
-                        height: 116
+                        height: 126
                         bg_opa: 0%
                         border_width: 0
                         pad_all: 0
@@ -1461,7 +1646,7 @@ lvgl:
                               text_align: CENTER
                               long_mode: CLIP
                           - label:
-                              id: hourly_forecast_2_cloud
+                              id: hourly_forecast_2_precipitation
                               x: 0
                               y: 106
                               width: 100
@@ -1477,7 +1662,7 @@ lvgl:
                         x: 226
                         y: 10
                         width: 100
-                        height: 116
+                        height: 126
                         bg_opa: 0%
                         border_width: 0
                         pad_all: 0
@@ -1527,7 +1712,7 @@ lvgl:
                               text_align: CENTER
                               long_mode: CLIP
                           - label:
-                              id: hourly_forecast_3_cloud
+                              id: hourly_forecast_3_precipitation
                               x: 0
                               y: 106
                               width: 100
@@ -1543,7 +1728,7 @@ lvgl:
                         x: 333
                         y: 10
                         width: 100
-                        height: 116
+                        height: 126
                         bg_opa: 0%
                         border_width: 0
                         pad_all: 0
@@ -1593,7 +1778,7 @@ lvgl:
                               text_align: CENTER
                               long_mode: CLIP
                           - label:
-                              id: hourly_forecast_4_cloud
+                              id: hourly_forecast_4_precipitation
                               x: 0
                               y: 106
                               width: 100
@@ -1609,7 +1794,7 @@ lvgl:
                         x: 440
                         y: 10
                         width: 100
-                        height: 116
+                        height: 126
                         bg_opa: 0%
                         border_width: 0
                         pad_all: 0
@@ -1659,7 +1844,7 @@ lvgl:
                               text_align: CENTER
                               long_mode: CLIP
                           - label:
-                              id: hourly_forecast_5_cloud
+                              id: hourly_forecast_5_precipitation
                               x: 0
                               y: 106
                               width: 100
@@ -1675,7 +1860,7 @@ lvgl:
                         x: 547
                         y: 10
                         width: 100
-                        height: 116
+                        height: 126
                         bg_opa: 0%
                         border_width: 0
                         pad_all: 0
@@ -1725,7 +1910,7 @@ lvgl:
                               text_align: CENTER
                               long_mode: CLIP
                           - label:
-                              id: hourly_forecast_6_cloud
+                              id: hourly_forecast_6_precipitation
                               x: 0
                               y: 106
                               width: 100
@@ -1741,7 +1926,7 @@ lvgl:
                         x: 654
                         y: 10
                         width: 100
-                        height: 116
+                        height: 126
                         bg_opa: 0%
                         border_width: 0
                         pad_all: 0
@@ -1791,7 +1976,7 @@ lvgl:
                               text_align: CENTER
                               long_mode: CLIP
                           - label:
-                              id: hourly_forecast_7_cloud
+                              id: hourly_forecast_7_precipitation
                               x: 0
                               y: 106
                               width: 100
@@ -1807,7 +1992,7 @@ lvgl:
                         x: 761
                         y: 10
                         width: 100
-                        height: 116
+                        height: 126
                         bg_opa: 0%
                         border_width: 0
                         pad_all: 0
@@ -1857,7 +2042,7 @@ lvgl:
                               text_align: CENTER
                               long_mode: CLIP
                           - label:
-                              id: hourly_forecast_8_cloud
+                              id: hourly_forecast_8_precipitation
                               x: 0
                               y: 106
                               width: 100
@@ -1873,7 +2058,7 @@ lvgl:
                         x: 868
                         y: 10
                         width: 100
-                        height: 116
+                        height: 126
                         bg_opa: 0%
                         border_width: 0
                         pad_all: 0
@@ -1923,7 +2108,7 @@ lvgl:
                               text_align: CENTER
                               long_mode: CLIP
                           - label:
-                              id: hourly_forecast_9_cloud
+                              id: hourly_forecast_9_precipitation
                               x: 0
                               y: 106
                               width: 100
@@ -1939,7 +2124,7 @@ lvgl:
                         x: 975
                         y: 10
                         width: 100
-                        height: 116
+                        height: 126
                         bg_opa: 0%
                         border_width: 0
                         pad_all: 0
@@ -1989,7 +2174,7 @@ lvgl:
                               text_align: CENTER
                               long_mode: CLIP
                           - label:
-                              id: hourly_forecast_10_cloud
+                              id: hourly_forecast_10_precipitation
                               x: 0
                               y: 106
                               width: 100
@@ -2005,7 +2190,7 @@ lvgl:
                         x: 1082
                         y: 10
                         width: 100
-                        height: 116
+                        height: 126
                         bg_opa: 0%
                         border_width: 0
                         pad_all: 0
@@ -2055,7 +2240,7 @@ lvgl:
                               text_align: CENTER
                               long_mode: CLIP
                           - label:
-                              id: hourly_forecast_11_cloud
+                              id: hourly_forecast_11_precipitation
                               x: 0
                               y: 106
                               width: 100
@@ -2071,7 +2256,7 @@ lvgl:
                         x: 1189
                         y: 10
                         width: 100
-                        height: 116
+                        height: 126
                         bg_opa: 0%
                         border_width: 0
                         pad_all: 0
@@ -2121,7 +2306,7 @@ lvgl:
                               text_align: CENTER
                               long_mode: CLIP
                           - label:
-                              id: hourly_forecast_12_cloud
+                              id: hourly_forecast_12_precipitation
                               x: 0
                               y: 106
                               width: 100
